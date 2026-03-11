@@ -57,4 +57,3 @@ cp retroarch "$OUTPUT_DIR/"
 aarch64-linux-gnu-strip "$OUTPUT_DIR/retroarch"
 
 echo "=== Build complete: ${OUTPUT_DIR}/retroarch ==="
-file "$OUTPUT_DIR/retroarch"
