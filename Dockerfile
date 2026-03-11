@@ -23,7 +23,6 @@ RUN dpkg --add-architecture arm64 && \
     libegl1-mesa-dev:arm64 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY patches/ /patches/
 COPY build.sh /build.sh
 RUN chmod +x /build.sh
 
