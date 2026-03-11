@@ -1,0 +1,35 @@
+name: Build RetroArch
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      retroarch_version:
+        description: 'RetroArch version tag'
+        default: 'v1.22.2'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t ra-builder .
+
+      - name: Build RetroArch
+        run: |
+          mkdir -p output
+          docker run --rm \
+            -e RETROARCH_VERSION=${{ github.event.inputs.retroarch_version || 'v1.22.2' }} \
+            -v ${{ github.workspace }}/output:/output \
+            ra-builder
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: retroarch-aarch64
+          path: output/retroarch
