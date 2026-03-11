@@ -7,11 +7,28 @@ on:
         description: 'RetroArch version tag'
         default: 'v1.22.2'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Create beta release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          TAG="beta-${BRANCH}"
+          # Delete existing release/tag if present
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" \
+            --target "$BRANCH" \
+            --title "Beta - ${BRANCH}" \
+            --notes "RetroArch ${{ github.event.inputs.retroarch_version || 'v1.22.2' }} built from \`${BRANCH}\`" \
+            --prerelease
 
       - name: Build Docker image
         run: docker build -t ra-builder .
@@ -24,8 +41,9 @@ jobs:
             -v ${{ github.workspace }}/output:/output \
             ra-builder
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: retroarch-aarch64
-          path: output/retroarch
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="beta-${GITHUB_REF_NAME}"
+          gh release upload "$TAG" output/retroarch --clobber
