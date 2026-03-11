@@ -21,9 +21,6 @@ export AR=aarch64-linux-gnu-ar
 export STRIP=aarch64-linux-gnu-strip
 export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
 export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig
-export CFLAGS="-no-pie"
-export CXXFLAGS="-no-pie"
-export LDFLAGS="-no-pie"
 
 # Configure for universal aarch64 binary
 # Uses SDL2 + EGL + GLES which works across all GPU vendors (PowerVR, Mali, etc.)
