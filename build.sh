@@ -14,6 +14,14 @@ fi
 
 cd RetroArch
 
+# Apply patches
+if [ -d /patches ] && ls /patches/*.patch 1>/dev/null 2>&1; then
+    for patch in /patches/*.patch; do
+        echo "Applying: $(basename "$patch")"
+        git apply "$patch"
+    done
+fi
+
 # Cross-compilation environment
 export CC=aarch64-linux-gnu-gcc
 export CXX=aarch64-linux-gnu-g++
