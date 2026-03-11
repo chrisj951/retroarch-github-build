@@ -1,10 +1,6 @@
 name: Build RetroArch
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
     inputs:
       retroarch_version:
