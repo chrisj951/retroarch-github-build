@@ -78,7 +78,7 @@ index 17d4b94..bfc4a87 100644
     font_driver_bind_block(p_dispwidget->gfx_widget_fonts.regular.font,
           &p_dispwidget->gfx_widget_fonts.regular.raster_block);
 diff --git a/retroarch.c b/retroarch.c
-index b167283..a80add3 100644
+index b167283..5257ee8 100644
 --- a/retroarch.c
 +++ b/retroarch.c
 @@ -196,6 +196,9 @@
@@ -91,15 +91,16 @@ index b167283..a80add3 100644
  #ifdef HAVE_CHEATS
  #include "cheat_manager.h"
  #endif
-@@ -3421,6 +3424,16 @@ bool command_event(enum event_command cmd, void *data)
+@@ -3421,6 +3424,17 @@ bool command_event(enum event_command cmd, void *data)
              return false;
           break;
        case CMD_EVENT_MENU_TOGGLE:
 +#ifdef HAVE_SPRUCE_IGM
-+         /* If spruce IGM is enabled and active, close it first
-+          * so the real menu can open (used by "RetroArch Menu" item) */
++         /* Spruce IGM intercepts menu toggle when enabled.
++          * The bypass flag is set when the IGM's "RetroArch Menu"
++          * item needs to open the real RA menu. */
 +         if (settings->bools.spruce_igm_enable
-+               && !spruce_igm_is_active())
++               && !spruce_igm_check_and_clear_bypass())
 +         {
 +            spruce_igm_toggle();
 +            break;
@@ -110,10 +111,10 @@ index b167283..a80add3 100644
              retroarch_menu_running_finished(false);
 diff --git a/spruce_igm.c b/spruce_igm.c
 new file mode 100644
-index 0000000..1fbf844
+index 0000000..97c1e0e
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,370 @@
+@@ -0,0 +1,388 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
@@ -179,6 +180,7 @@ index 0000000..1fbf844
 +   bool        active;
 +   bool        was_paused;       /* pause state before IGM opened  */
 +   bool        open_ra_menu;     /* deferred: open RA menu on close */
++   bool        bypass_hook;      /* let next MENU_TOGGLE pass through */
 +   int         selected;
 +   font_data_t *font;
 +   font_data_t *font_small;
@@ -204,6 +206,21 @@ index 0000000..1fbf844
 +#define IGM_PRESSED(cur, prev, btn) \
 +   (((cur) & (1 << (btn))) && !((prev) & (1 << (btn))))
 +
++/* ── Bypass ────────────────────────────────────────────────── */
++
++/* Called from the CMD_EVENT_MENU_TOGGLE hook.
++ * Returns true (and clears the flag) when the IGM wants the
++ * real RA menu to open instead of itself. */
++bool spruce_igm_check_and_clear_bypass(void)
++{
++   if (igm.bypass_hook)
++   {
++      igm.bypass_hook = false;
++      return true;
++   }
++   return false;
++}
++
 +/* ── Toggle ────────────────────────────────────────────────── */
 +
 +void spruce_igm_toggle(void)
@@ -219,10 +236,12 @@ index 0000000..1fbf844
 +      if (is_paused && !igm.was_paused)
 +         command_event(CMD_EVENT_PAUSE_TOGGLE, NULL);
 +
-+      /* If user chose "RetroArch Menu", open it now */
++      /* If user chose "RetroArch Menu", open it now
++       * by setting the bypass flag so our hook lets it through */
 +      if (igm.open_ra_menu)
 +      {
 +         igm.open_ra_menu = false;
++         igm.bypass_hook  = true;
 +         command_event(CMD_EVENT_MENU_TOGGLE, NULL);
 +      }
 +   }
@@ -486,10 +505,10 @@ index 0000000..1fbf844
 +}
 diff --git a/spruce_igm.h b/spruce_igm.h
 new file mode 100644
-index 0000000..3990485
+index 0000000..e6235a4
 --- /dev/null
 +++ b/spruce_igm.h
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,17 @@
 +#ifndef SPRUCE_IGM_H
 +#define SPRUCE_IGM_H
 +
@@ -499,6 +518,7 @@ index 0000000..3990485
 +
 +void spruce_igm_toggle(void);
 +bool spruce_igm_is_active(void);
++bool spruce_igm_check_and_clear_bypass(void);
 +void spruce_igm_frame(
 +      gfx_display_t *p_disp,
 +      void *userdata,
