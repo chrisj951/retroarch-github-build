@@ -126,7 +126,7 @@ index 679517b..208a181 100644
  #if defined(HAVE_MENU) && defined(HAVE_NETWORKING)
 diff --git a/spruce_igm.c b/spruce_igm.c
 new file mode 100644
-index 0000000..3f19175
+index 0000000..207d62e
 --- /dev/null
 +++ b/spruce_igm.c
 @@ -0,0 +1,415 @@
@@ -189,9 +189,9 @@ index 0000000..3f19175
 +static float color_selected[16]   = COLOR_HEX_TO_FLOAT(0xd65d0e, 0.35f);
 +static float color_divider[16]    = COLOR_HEX_TO_FLOAT(0x504945, 0.50f);
 +
-+/* ABGR format for gfx_display_draw_text (0xAABBGGRR) */
-+#define TEXT_COLOR_NORMAL   0xFFB2DBEBu   /* #EBDBB2 */
-+#define TEXT_COLOR_SELECTED 0xFFC7F1FBu   /* #FBF1C7 */
++/* RRGGBBAA format for gfx_display_draw_text */
++#define TEXT_COLOR_NORMAL   0xEBDBB2FFu   /* #EBDBB2 */
++#define TEXT_COLOR_SELECTED 0xFBF1C7FFu   /* #FBF1C7 */
 +
 +#define IGM_NO_PENDING     -1
 +
