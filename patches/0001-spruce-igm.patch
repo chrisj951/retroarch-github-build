@@ -18,32 +18,6 @@ index 57dabf5..f147cbd 100644
     endif
  
     ifeq ($(HAVE_RGUI), 1)
-diff --git a/configuration.c b/configuration.c
-index 0ec2ee4..167054d 100644
---- a/configuration.c
-+++ b/configuration.c
-@@ -2141,6 +2141,9 @@ static struct config_bool_setting *populate_settings_bool(
-    SETTING_BOOL("cheevos_visibility_lboard_trackers", &settings->bools.cheevos_visibility_lboard_trackers, true, DEFAULT_CHEEVOS_VISIBILITY_LBOARD_TRACKERS, false);
-    SETTING_BOOL("cheevos_visibility_progress_tracker", &settings->bools.cheevos_visibility_progress_tracker, true, DEFAULT_CHEEVOS_VISIBILITY_PROGRESS_TRACKER, false);
- #endif
-+#ifdef HAVE_SPRUCE_IGM
-+   SETTING_BOOL("spruce_igm_enable",             &settings->bools.spruce_igm_enable, true, false, false);
-+#endif
- #ifdef HAVE_OVERLAY
-    SETTING_BOOL("input_overlay_enable",          &settings->bools.input_overlay_enable, true, config_overlay_enable_default(), false);
-    SETTING_BOOL("input_overlay_enable_autopreferred", &settings->bools.input_overlay_enable_autopreferred, true, DEFAULT_OVERLAY_ENABLE_AUTOPREFERRED, false);
-diff --git a/configuration.h b/configuration.h
-index 81b30e8..1f29417 100644
---- a/configuration.h
-+++ b/configuration.h
-@@ -712,6 +712,7 @@ typedef struct settings
-       bool input_remap_sort_by_controller_enable;
-       bool input_autodetect_enable;
-       bool input_sensors_enable;
-+      bool spruce_igm_enable;
-       bool input_overlay_enable;
-       bool input_overlay_enable_autopreferred;
-       bool input_overlay_behind_menu;
 diff --git a/gfx/gfx_widgets.c b/gfx/gfx_widgets.c
 index 17d4b94..bfc4a87 100644
 --- a/gfx/gfx_widgets.c
@@ -92,7 +66,7 @@ index b167283..9128500 100644
  #include "cheat_manager.h"
  #endif
 diff --git a/runloop.c b/runloop.c
-index 679517b..6c6ee02 100644
+index 679517b..208a181 100644
 --- a/runloop.c
 +++ b/runloop.c
 @@ -208,6 +208,9 @@
@@ -114,7 +88,7 @@ index 679517b..6c6ee02 100644
 -         if (menu_st->flags & MENU_ST_FLAG_ALIVE)
 +#ifdef HAVE_SPRUCE_IGM
 +         /* Spruce IGM intercepts menu toggle when enabled */
-+         if (settings->bools.spruce_igm_enable
++         if (spruce_igm_is_enabled()
 +               && !spruce_igm_check_and_clear_bypass())
           {
 -            if (rarch_is_initialized && !core_type_is_dummy && core_is_running)
@@ -152,10 +126,10 @@ index 679517b..6c6ee02 100644
  #if defined(HAVE_MENU) && defined(HAVE_NETWORKING)
 diff --git a/spruce_igm.c b/spruce_igm.c
 new file mode 100644
-index 0000000..9fae639
+index 0000000..3f19175
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,405 @@
+@@ -0,0 +1,415 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
@@ -175,6 +149,7 @@ index 0000000..9fae639
 +
 +#include <string.h>
 +#include <stdio.h>
++#include <unistd.h>
 +
 +#include "retroarch.h"
 +#include "configuration.h"
@@ -252,6 +227,15 @@ index 0000000..9fae639
 +/* Return buttons that just went from released → pressed */
 +#define IGM_PRESSED(cur, prev, btn) \
 +   (((cur) & (1 << (btn))) && !((prev) & (1 << (btn))))
++
++/* ── Enable check (file-based flag) ────────────────────────── */
++
++#define IGM_FLAG_PATH "/mnt/SDCARD/RetroArch/IGM.txt"
++
++bool spruce_igm_is_enabled(void)
++{
++   return access(IGM_FLAG_PATH, F_OK) == 0;
++}
 +
 +/* ── Bypass ────────────────────────────────────────────────── */
 +
@@ -563,10 +547,10 @@ index 0000000..9fae639
 +}
 diff --git a/spruce_igm.h b/spruce_igm.h
 new file mode 100644
-index 0000000..7b768bd
+index 0000000..4613e26
 --- /dev/null
 +++ b/spruce_igm.h
-@@ -0,0 +1,18 @@
+@@ -0,0 +1,19 @@
 +#ifndef SPRUCE_IGM_H
 +#define SPRUCE_IGM_H
 +
@@ -574,6 +558,7 @@ index 0000000..7b768bd
 +
 +#include "gfx/gfx_display.h"
 +
++bool spruce_igm_is_enabled(void);
 +void spruce_igm_toggle(void);
 +bool spruce_igm_is_active(void);
 +bool spruce_igm_check_and_clear_bypass(void);
