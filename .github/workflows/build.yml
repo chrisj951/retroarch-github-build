@@ -30,10 +30,23 @@ jobs:
             --notes "RetroArch ${{ github.event.inputs.retroarch_version || 'v1.22.2' }} built from \`${BRANCH}\`" \
             --prerelease
 
-      - name: Build Docker image
+      - name: Detect build target
+        id: target
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          if [ "$BRANCH" = "a30" ]; then
+            echo "platform=a30" >> "$GITHUB_OUTPUT"
+          else
+            echo "platform=aarch64" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- aarch64 build ---
+      - name: Build Docker image (aarch64)
+        if: steps.target.outputs.platform == 'aarch64'
         run: docker build -t ra-builder .
 
-      - name: Build RetroArch
+      - name: Build RetroArch (aarch64)
+        if: steps.target.outputs.platform == 'aarch64'
         run: |
           mkdir -p output
           docker run --rm \
@@ -41,10 +54,40 @@ jobs:
             -v ${{ github.workspace }}/output:/output \
             ra-builder
 
-      - name: Upload to release
+      - name: Upload aarch64 binary
+        if: steps.target.outputs.platform == 'aarch64'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mv output/retroarch output/ra64.universal
           TAG="beta-${GITHUB_REF_NAME}"
           gh release upload "$TAG" output/ra64.universal --clobber
+
+      # --- A30 build ---
+      - name: Download A30 toolchain
+        if: steps.target.outputs.platform == 'a30'
+        run: |
+          wget -q -O a30_toolchain-v1.0.tar.gz \
+            "https://github.com/steward-fu/website/releases/download/miyoo-a30/a30_toolchain-v1.0.tar.gz"
+
+      - name: Build Docker image (A30)
+        if: steps.target.outputs.platform == 'a30'
+        run: docker build -f Dockerfile.a30 -t ra-builder-a30 .
+
+      - name: Build RetroArch (A30)
+        if: steps.target.outputs.platform == 'a30'
+        run: |
+          mkdir -p output
+          docker run --rm \
+            -e RETROARCH_VERSION=${{ github.event.inputs.retroarch_version || 'v1.22.2' }} \
+            -v ${{ github.workspace }}/output:/output \
+            ra-builder-a30
+
+      - name: Upload A30 binary
+        if: steps.target.outputs.platform == 'a30'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv output/retroarch output/retroarch.A30
+          TAG="beta-${GITHUB_REF_NAME}"
+          gh release upload "$TAG" output/retroarch.A30 --clobber
