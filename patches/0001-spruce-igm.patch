@@ -152,10 +152,10 @@ index 679517b..6c6ee02 100644
  #if defined(HAVE_MENU) && defined(HAVE_NETWORKING)
 diff --git a/spruce_igm.c b/spruce_igm.c
 new file mode 100644
-index 0000000..8d710cd
+index 0000000..9fae639
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,408 @@
+@@ -0,0 +1,405 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
@@ -199,8 +199,8 @@ index 0000000..8d710cd
 +
 +static const char *igm_labels[IGM_ITEM_COUNT] = {
 +   "Resume",
-+   "Save State",
-+   "Load State",
++   "Save",
++   "Load",
 +   "Reset",
 +   "RetroArch Menu",
 +   "Exit Game"
@@ -498,10 +498,20 @@ index 0000000..8d710cd
 +               video_width, video_height,
 +               color_selected, NULL);
 +
-+      /* Label text */
++      /* Label text (save/load rows include slot number) */
 +      {
 +         uint32_t text_col;
-+         const char *label = igm_labels[i];
++         const char *label;
++
++         if (i == IGM_SAVE_STATE || i == IGM_LOAD_STATE)
++         {
++            int slot = settings->ints.state_slot;
++            snprintf(slot_buf, sizeof(slot_buf), "%s Slot %d",
++                  igm_labels[i], slot);
++            label = slot_buf;
++         }
++         else
++            label = igm_labels[i];
 +
 +         if (selected)
 +            text_col = TEXT_COLOR_SELECTED;
@@ -517,13 +527,9 @@ index 0000000..8d710cd
 +               1.0f, false, 0.0f, false);
 +      }
 +
-+      /* Slot indicator for Save/Load State rows */
-+      if ((i == IGM_SAVE_STATE || i == IGM_LOAD_STATE) && igm.font_small)
++      /* Arrows for Save/Load rows */
++      if (i == IGM_SAVE_STATE || i == IGM_LOAD_STATE)
 +      {
-+         int slot = settings->ints.state_slot;
-+         snprintf(slot_buf, sizeof(slot_buf), "Slot %d", slot);
-+
-+         /* Arrows */
 +         gfx_display_draw_text(igm.font, "<",
 +               (float)(panel_x + panel_w / 10),
 +               (float)(iy + item_h * 0.68f),
@@ -537,15 +543,6 @@ index 0000000..8d710cd
 +               (float)(iy + item_h * 0.68f),
 +               video_width, video_height,
 +               selected ? TEXT_COLOR_SELECTED : TEXT_COLOR_NORMAL,
-+               TEXT_ALIGN_CENTER,
-+               1.0f, false, 0.0f, false);
-+
-+         /* Slot number below label */
-+         gfx_display_draw_text(igm.font_small, slot_buf,
-+               (float)(video_width / 2),
-+               (float)(iy + item_h * 0.92f),
-+               video_width, video_height,
-+               TEXT_COLOR_NORMAL,
 +               TEXT_ALIGN_CENTER,
 +               1.0f, false, 0.0f, false);
 +      }
