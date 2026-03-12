@@ -143,7 +143,7 @@ new file mode 100644
 index 0000000..dc441a5
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,403 @@
+@@ -0,0 +1,413 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
@@ -176,8 +176,8 @@ index 0000000..dc441a5
 +   IGM_SAVE_STATE,
 +   IGM_LOAD_STATE,
 +   IGM_RESET,
-+   IGM_EXIT,
 +   IGM_RETROARCH,
++   IGM_EXIT,
 +   IGM_ITEM_COUNT
 +};
 +
@@ -186,8 +186,8 @@ index 0000000..dc441a5
 +   "Save State",
 +   "Load State",
 +   "Reset",
-+   "Exit Game",
-+   "RetroArch Menu"
++   "RetroArch Menu",
++   "Exit Game"
 +};
 +
 +/* ── Gruvbox-inspired colours ──────────────────────────────── */
@@ -367,18 +367,31 @@ index 0000000..dc441a5
 +            break;
 +         case IGM_LOAD_STATE:
 +            command_event(CMD_EVENT_LOAD_STATE, NULL);
-+            spruce_igm_toggle(); /* close after load */
++            /* Close IGM and force-unpause: load state can
++             * leave the core paused regardless of toggle logic */
++            igm.active = false;
++            {
++               runloop_state_t *rs = runloop_state_get_ptr();
++               if (rs->flags & RUNLOOP_FLAG_PAUSED)
++                  command_event(CMD_EVENT_PAUSE_TOGGLE, NULL);
++            }
 +            return;
 +         case IGM_RESET:
 +            spruce_igm_toggle(); /* close first */
 +            command_event(CMD_EVENT_RESET, NULL);
 +            return;
-+         case IGM_EXIT:
-+            command_event(CMD_EVENT_QUIT, NULL);
-+            return;
 +         case IGM_RETROARCH:
 +            igm.open_ra_menu = true;
 +            spruce_igm_toggle(); /* close, then opens RA menu */
++            return;
++         case IGM_EXIT:
++            igm.active = false;
++            {
++               runloop_state_t *rs = runloop_state_get_ptr();
++               if (rs->flags & RUNLOOP_FLAG_PAUSED)
++                  command_event(CMD_EVENT_PAUSE_TOGGLE, NULL);
++            }
++            command_event(CMD_EVENT_QUIT, NULL);
 +            return;
 +      }
 +   }

@@ -45,5 +45,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          mv output/retroarch output/ra64.universal
           TAG="beta-${GITHUB_REF_NAME}"
-          gh release upload "$TAG" output/retroarch --clobber
+          gh release upload "$TAG" output/ra64.universal --clobber
