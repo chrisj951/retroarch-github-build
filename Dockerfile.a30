@@ -18,6 +18,13 @@ RUN apt-get update && \
 COPY a30_toolchain-v1.0.tar.gz /tmp/
 RUN tar xzf /tmp/a30_toolchain-v1.0.tar.gz -C /opt && rm /tmp/a30_toolchain-v1.0.tar.gz
 
+# Create toolchain symlinks (buildroot wrappers weren't included in tarball)
+RUN cd /opt/a30/bin && \
+    ln -sf arm-a30-linux-gnueabihf-gcc-13.2.0.br_real arm-a30-linux-gnueabihf-gcc && \
+    ln -sf arm-a30-linux-gnueabihf-c++.br_real arm-a30-linux-gnueabihf-g++ && \
+    ln -sf arm-a30-linux-gnueabihf-c++.br_real arm-a30-linux-gnueabihf-c++ && \
+    ln -sf arm-a30-linux-gnueabihf-cpp.br_real arm-a30-linux-gnueabihf-cpp
+
 # Create symlinks for the libraries that RetroArch's configure expects
 RUN SYSROOT=/opt/a30/arm-a30-linux-gnueabihf/sysroot && \
     cd "$SYSROOT/usr/lib" && \
