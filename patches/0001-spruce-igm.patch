@@ -92,7 +92,7 @@ index b167283..9128500 100644
  #include "cheat_manager.h"
  #endif
 diff --git a/runloop.c b/runloop.c
-index 679517b..8d9e6f1 100644
+index 679517b..6c6ee02 100644
 --- a/runloop.c
 +++ b/runloop.c
 @@ -208,6 +208,9 @@
@@ -138,20 +138,37 @@ index 679517b..8d9e6f1 100644
        }
        /* Initial menu toggle on startup */
        else if (core_type_is_dummy && !(menu_st->flags & MENU_ST_FLAG_ALIVE))
+@@ -7321,6 +7335,11 @@ int runloop_iterate(void)
+          }
+ #endif
+          video_driver_cached_frame();
++#ifdef HAVE_SPRUCE_IGM
++         /* Process deferred IGM actions now that we're back
++          * in the runloop context (outside the render callback). */
++         spruce_igm_process_pending();
++#endif
+          goto end;
+       case RUNLOOP_STATE_MENU:
+ #if defined(HAVE_MENU) && defined(HAVE_NETWORKING)
 diff --git a/spruce_igm.c b/spruce_igm.c
 new file mode 100644
-index 0000000..dc441a5
+index 0000000..e94816e
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,416 @@
+@@ -0,0 +1,423 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
 + * Renders a minimal quick menu over the paused game frame.
 + * Controlled with d-pad and face buttons (no touchscreen needed).
 + *
-+ * Menu items:
-+ *   Resume / Save State / Load State / Reset / Exit / RetroArch Menu
++ * Architecture: input is polled during rendering (gfx_widgets_frame),
++ * but actions that call command_event are deferred to
++ * spruce_igm_process_pending(), which runs from the runloop
++ * context after rendering completes.  This avoids calling
++ * commands from inside the video driver's render callback
++ * where CMD_EVENT_QUIT can deadlock and CMD_EVENT_LOAD_STATE
++ * interferes with the pause state via run_frames_and_pause.
 + */
 +
 +#include "spruce_igm.h"
@@ -203,15 +220,17 @@ index 0000000..dc441a5
 +#define TEXT_COLOR_ORANGE   0xFF0E5DD6u   /* #D65D0E */
 +#define TEXT_COLOR_DIM      0xFF8499A8u   /* #A89984 */
 +
++#define IGM_NO_PENDING     -1
++
 +/* ── State ─────────────────────────────────────────────────── */
 +
 +static struct
 +{
 +   bool        active;
 +   bool        was_paused;       /* pause state before IGM opened  */
-+   bool        open_ra_menu;     /* deferred: open RA menu on close */
 +   bool        bypass_hook;      /* let next MENU_TOGGLE pass through */
 +   int         selected;
++   int         pending_action;   /* deferred action, or IGM_NO_PENDING */
 +   font_data_t *font;
 +   font_data_t *font_small;
 +   uint16_t    prev_buttons;     /* previous frame joypad bits      */
@@ -244,7 +263,7 @@ index 0000000..dc441a5
 +
 +/* ── Bypass ────────────────────────────────────────────────── */
 +
-+/* Called from the CMD_EVENT_MENU_TOGGLE hook.
++/* Called from the runloop MENU_TOGGLE hook.
 + * Returns true (and clears the flag) when the IGM wants the
 + * real RA menu to open instead of itself. */
 +bool spruce_igm_check_and_clear_bypass(void)
@@ -257,59 +276,90 @@ index 0000000..dc441a5
 +   return false;
 +}
 +
-+/* ── Toggle ────────────────────────────────────────────────── */
++/* ── Toggle (called from runloop context) ──────────────────── */
 +
 +void spruce_igm_toggle(void)
 +{
-+   /* Debounce: ignore toggles that arrive too quickly.
-+    * The physical menu button and the homebutton watchdog's
-+    * netcat MENU_TOGGLE often fire within a few frames of each
-+    * other, causing an immediate open→close. */
 +   retro_time_t now = cpu_features_get_time_usec();
 +   if (now - igm.last_toggle_us < IGM_TOGGLE_DEBOUNCE_US)
 +      return;
 +   igm.last_toggle_us = now;
++
 +   if (igm.active)
 +   {
-+      /* Close IGM */
-+      igm.active = false;
++      /* Close IGM — safe to call commands here (runloop context) */
++      igm.active         = false;
++      igm.pending_action = IGM_NO_PENDING;
 +
-+      /* Restore previous pause state */
-+      runloop_state_t *runloop_st = runloop_state_get_ptr();
-+      bool is_paused = (runloop_st->flags & RUNLOOP_FLAG_PAUSED) != 0;
-+      if (is_paused && !igm.was_paused)
-+         command_event(CMD_EVENT_PAUSE_TOGGLE, NULL);
-+
-+      /* If user chose "RetroArch Menu", open it now
-+       * by setting the bypass flag so our hook lets it through */
-+      if (igm.open_ra_menu)
-+      {
-+         igm.open_ra_menu = false;
-+         igm.bypass_hook  = true;
-+         command_event(CMD_EVENT_MENU_TOGGLE, NULL);
-+      }
++      if (!igm.was_paused)
++         command_event(CMD_EVENT_UNPAUSE, NULL);
 +   }
 +   else
 +   {
 +      /* Open IGM */
 +      runloop_state_t *runloop_st = runloop_state_get_ptr();
-+      igm.was_paused = (runloop_st->flags & RUNLOOP_FLAG_PAUSED) != 0;
-+      igm.active     = true;
-+      igm.selected   = 0;
-+      igm.open_ra_menu = false;
++      igm.was_paused     = (runloop_st->flags & RUNLOOP_FLAG_PAUSED) != 0;
++      igm.active         = true;
++      igm.selected       = 0;
++      igm.pending_action = IGM_NO_PENDING;
 +
 +      /* Flush button state so we don't act on the toggle press itself */
-+      igm.prev_buttons = 0xFFFF;
++      igm.prev_buttons   = 0xFFFF;
 +
 +      /* Pause the core if it isn't already */
 +      if (!igm.was_paused)
-+         command_event(CMD_EVENT_PAUSE_TOGGLE, NULL);
++         command_event(CMD_EVENT_PAUSE, NULL);
 +   }
 +}
 +
 +bool spruce_igm_is_active(void)
 +{
 +   return igm.active;
++}
++
++/* ── Deferred action processing (called from runloop) ──────── */
++
++void spruce_igm_process_pending(void)
++{
++   int action;
++
++   if (igm.pending_action == IGM_NO_PENDING)
++      return;
++
++   action             = igm.pending_action;
++   igm.pending_action = IGM_NO_PENDING;
++   igm.active         = false;
++
++   /* Unpause before executing the action.
++    * We unpause for all actions (including RA menu)
++    * so the target system starts from a clean state. */
++   if (!igm.was_paused)
++      command_event(CMD_EVENT_UNPAUSE, NULL);
++
++   switch (action)
++   {
++      case IGM_RESUME:
++         /* Already unpaused above */
++         break;
++      case IGM_LOAD_STATE:
++         command_event(CMD_EVENT_LOAD_STATE, NULL);
++         /* CMD_EVENT_LOAD_STATE sets run_frames_and_pause when
++          * called while paused, which would re-pause after one
++          * frame.  We already unpaused, but cancel it anyway
++          * in case of a race. */
++         runloop_state_get_ptr()->run_frames_and_pause = 0;
++         break;
++      case IGM_RESET:
++         command_event(CMD_EVENT_RESET, NULL);
++         break;
++      case IGM_RETROARCH:
++         igm.bypass_hook = true;
++         command_event(CMD_EVENT_MENU_TOGGLE, NULL);
++         break;
++      case IGM_EXIT:
++         command_event(CMD_EVENT_QUIT, NULL);
++         break;
++   }
 +}
 +
 +/* ── Input handling (called every frame while active) ──────── */
@@ -319,8 +369,6 @@ index 0000000..dc441a5
 +   uint16_t cur  = igm_read_buttons();
 +   uint16_t prev = igm.prev_buttons;
 +   igm.prev_buttons = cur;
-+
-+   settings_t *settings = config_get_ptr();
 +
 +   /* D-pad up */
 +   if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_UP))
@@ -350,7 +398,7 @@ index 0000000..dc441a5
 +   /* B button — close (resume) */
 +   if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_B))
 +   {
-+      spruce_igm_toggle(); /* close */
++      igm.pending_action = IGM_RESUME;
 +      return;
 +   }
 +
@@ -359,39 +407,13 @@ index 0000000..dc441a5
 +   {
 +      switch (igm.selected)
 +      {
-+         case IGM_RESUME:
-+            spruce_igm_toggle(); /* close */
-+            return;
 +         case IGM_SAVE_STATE:
++            /* Save is safe from render context — stays in IGM */
 +            command_event(CMD_EVENT_SAVE_STATE, NULL);
 +            break;
-+         case IGM_LOAD_STATE:
-+            command_event(CMD_EVENT_LOAD_STATE, NULL);
-+            /* Close IGM and force-unpause: load state can
-+             * leave the core paused regardless of toggle logic */
-+            igm.active = false;
-+            {
-+               runloop_state_t *rs = runloop_state_get_ptr();
-+               if (rs->flags & RUNLOOP_FLAG_PAUSED)
-+                  command_event(CMD_EVENT_PAUSE_TOGGLE, NULL);
-+            }
-+            return;
-+         case IGM_RESET:
-+            spruce_igm_toggle(); /* close first */
-+            command_event(CMD_EVENT_RESET, NULL);
-+            return;
-+         case IGM_RETROARCH:
-+            igm.open_ra_menu = true;
-+            spruce_igm_toggle(); /* close, then opens RA menu */
-+            return;
-+         case IGM_EXIT:
-+            igm.active = false;
-+            {
-+               runloop_state_t *rs = runloop_state_get_ptr();
-+               if (rs->flags & RUNLOOP_FLAG_PAUSED)
-+                  command_event(CMD_EVENT_PAUSE_TOGGLE, NULL);
-+            }
-+            command_event(CMD_EVENT_QUIT, NULL);
++         default:
++            /* All other actions are deferred to process_pending */
++            igm.pending_action = igm.selected;
 +            return;
 +      }
 +   }
@@ -423,11 +445,8 @@ index 0000000..dc441a5
 +   if (!igm.font)
 +      return;
 +
-+   /* Handle input */
++   /* Handle input — may set pending_action for deferred execution */
 +   igm_handle_input();
-+   /* igm_handle_input may close the menu */
-+   if (!igm.active)
-+      return;
 +
 +   settings = config_get_ptr();
 +
@@ -562,10 +581,10 @@ index 0000000..dc441a5
 +}
 diff --git a/spruce_igm.h b/spruce_igm.h
 new file mode 100644
-index 0000000..e6235a4
+index 0000000..7b768bd
 --- /dev/null
 +++ b/spruce_igm.h
-@@ -0,0 +1,17 @@
+@@ -0,0 +1,18 @@
 +#ifndef SPRUCE_IGM_H
 +#define SPRUCE_IGM_H
 +
@@ -576,6 +595,7 @@ index 0000000..e6235a4
 +void spruce_igm_toggle(void);
 +bool spruce_igm_is_active(void);
 +bool spruce_igm_check_and_clear_bypass(void);
++void spruce_igm_process_pending(void);
 +void spruce_igm_frame(
 +      gfx_display_t *p_disp,
 +      void *userdata,
