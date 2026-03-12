@@ -78,7 +78,7 @@ index 17d4b94..bfc4a87 100644
     font_driver_bind_block(p_dispwidget->gfx_widget_fonts.regular.font,
           &p_dispwidget->gfx_widget_fonts.regular.raster_block);
 diff --git a/retroarch.c b/retroarch.c
-index b167283..5257ee8 100644
+index b167283..9128500 100644
 --- a/retroarch.c
 +++ b/retroarch.c
 @@ -196,6 +196,9 @@
@@ -91,24 +91,53 @@ index b167283..5257ee8 100644
  #ifdef HAVE_CHEATS
  #include "cheat_manager.h"
  #endif
-@@ -3421,6 +3424,17 @@ bool command_event(enum event_command cmd, void *data)
-             return false;
-          break;
-       case CMD_EVENT_MENU_TOGGLE:
+diff --git a/runloop.c b/runloop.c
+index 679517b..8d9e6f1 100644
+--- a/runloop.c
++++ b/runloop.c
+@@ -208,6 +208,9 @@
+ #include "configuration.h"
+ #include "list_special.h"
+ #include "core_option_manager.h"
 +#ifdef HAVE_SPRUCE_IGM
-+         /* Spruce IGM intercepts menu toggle when enabled.
-+          * The bypass flag is set when the IGM's "RetroArch Menu"
-+          * item needs to open the real RA menu. */
++#include "spruce_igm.h"
++#endif
+ #ifdef HAVE_CHEATS
+ #include "cheat_manager.h"
+ #endif
+@@ -6006,15 +6009,26 @@ static enum runloop_state_enum runloop_check_state(
+ 
+       if (pressed && !old_pressed)
+       {
+-         bool core_is_running    = runloop_st->flags & RUNLOOP_FLAG_CORE_RUNNING;
+-
+-         if (menu_st->flags & MENU_ST_FLAG_ALIVE)
++#ifdef HAVE_SPRUCE_IGM
++         /* Spruce IGM intercepts menu toggle when enabled */
 +         if (settings->bools.spruce_igm_enable
 +               && !spruce_igm_check_and_clear_bypass())
-+         {
+          {
+-            if (rarch_is_initialized && !core_type_is_dummy && core_is_running)
+-               retroarch_menu_running_finished(false);
 +            spruce_igm_toggle();
-+            break;
-+         }
+          }
+          else
+-            retroarch_menu_running();
 +#endif
- #ifdef HAVE_MENU
-          if (menu_st->flags & MENU_ST_FLAG_ALIVE)
-             retroarch_menu_running_finished(false);
++         {
++            bool core_is_running    = runloop_st->flags & RUNLOOP_FLAG_CORE_RUNNING;
++
++            if (menu_st->flags & MENU_ST_FLAG_ALIVE)
++            {
++               if (rarch_is_initialized && !core_type_is_dummy && core_is_running)
++                  retroarch_menu_running_finished(false);
++            }
++            else
++               retroarch_menu_running();
++         }
+       }
+       /* Initial menu toggle on startup */
+       else if (core_type_is_dummy && !(menu_st->flags & MENU_ST_FLAG_ALIVE))
 diff --git a/spruce_igm.c b/spruce_igm.c
 new file mode 100644
 index 0000000..97c1e0e
