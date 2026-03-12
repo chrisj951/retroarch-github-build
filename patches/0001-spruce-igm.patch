@@ -152,10 +152,10 @@ index 679517b..6c6ee02 100644
  #if defined(HAVE_MENU) && defined(HAVE_NETWORKING)
 diff --git a/spruce_igm.c b/spruce_igm.c
 new file mode 100644
-index 0000000..e94816e
+index 0000000..f365706
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,423 @@
+@@ -0,0 +1,411 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
@@ -183,7 +183,6 @@ index 0000000..e94816e
 +#include "gfx/gfx_display.h"
 +#include "gfx/font_driver.h"
 +#include "input/input_driver.h"
-+#include <features/features_cpu.h>
 +
 +/* ── Menu item definitions ─────────────────────────────────── */
 +
@@ -234,13 +233,7 @@ index 0000000..e94816e
 +   font_data_t *font;
 +   font_data_t *font_small;
 +   uint16_t    prev_buttons;     /* previous frame joypad bits      */
-+   retro_time_t last_toggle_us;  /* debounce: ignore rapid toggles  */
 +} igm;
-+
-+/* Minimum microseconds between toggle events.
-+ * Prevents the homebutton watchdog's netcat MENU_TOGGLE
-+ * from immediately closing what the physical button just opened. */
-+#define IGM_TOGGLE_DEBOUNCE_US 300000  /* 300 ms */
 +
 +/* ── Helpers ───────────────────────────────────────────────── */
 +
@@ -280,11 +273,6 @@ index 0000000..e94816e
 +
 +void spruce_igm_toggle(void)
 +{
-+   retro_time_t now = cpu_features_get_time_usec();
-+   if (now - igm.last_toggle_us < IGM_TOGGLE_DEBOUNCE_US)
-+      return;
-+   igm.last_toggle_us = now;
-+
 +   if (igm.active)
 +   {
 +      /* Close IGM — safe to call commands here (runloop context) */
