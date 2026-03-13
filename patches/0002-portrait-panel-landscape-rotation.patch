@@ -181,3 +181,30 @@ index 9522007..d852cb8 100644
     if (vinfo.pixclock)
     {
        mali->refresh_rate = 1000000.0f / vinfo.pixclock * 1000000.0f /
+diff --git a/gfx/gfx_display.c b/gfx/gfx_display.c
+index 85a207c..14a21e2 100644
+--- a/gfx/gfx_display.c
++++ b/gfx/gfx_display.c
+@@ -325,11 +325,17 @@ float gfx_display_get_dpi_scale(
+ #ifdef HAVE_OZONE
+       if (p_disp->menu_driver_id == MENU_DRIVER_ID_OZONE)
+       {
+-         /* Ozone has a capped scale factor */
+-         float new_width        = (float)width * 0.3333333f;
+-         if (((float)OZONE_SIDEBAR_WIDTH * adjusted_scale)
+-               > new_width)
+-            adjusted_scale      = (new_width / (float)OZONE_SIDEBAR_WIDTH);
++         /* Ozone has a capped scale factor — skip for rotated displays
++          * where the logical width is the physical height and the cap
++          * would over-constrain the scale (e.g. portrait panel in landscape). */
++         unsigned vid_rot       = config_get_ptr()->uints.video_rotation;
++         if (vid_rot % 2 == 0)
++         {
++            float new_width     = (float)width * 0.3333333f;
++            if (((float)OZONE_SIDEBAR_WIDTH * adjusted_scale)
++                  > new_width)
++               adjusted_scale   = (new_width / (float)OZONE_SIDEBAR_WIDTH);
++         }
+       }
+ #endif
+       adjusted_scale            = (adjusted_scale > 0.0001f) ? adjusted_scale : 1.0f;
