@@ -202,10 +202,28 @@ index 85a207c..2781e88 100644
                 > new_width)
              adjusted_scale      = (new_width / (float)OZONE_SIDEBAR_WIDTH);
 diff --git a/menu/drivers/ozone.c b/menu/drivers/ozone.c
-index 2c26c12..c129ed8 100644
+index 2c26c12..684a441 100644
 --- a/menu/drivers/ozone.c
 +++ b/menu/drivers/ozone.c
-@@ -9550,7 +9550,14 @@ static void ozone_set_layout(
+@@ -2993,7 +2993,16 @@ static void ozone_draw_icon(
+    coords.color         = (const float*)color;
+ 
+    draw.x               = x;
+-   draw.y               = height - y - icon_height;
++   /* When display is rotated 90/270, the viewport swap maps draw.y to the
++    * physical X axis. Use width (physical height) instead of height for
++    * the Y inversion so icons span the full physical range. */
++   {
++      unsigned vid_rot = config_get_ptr()->uints.video_rotation;
++      if (vid_rot % 2 != 0)
++         draw.y        = width - y - icon_height;
++      else
++         draw.y        = height - y - icon_height;
++   }
+    draw.width           = icon_width;
+    draw.height          = icon_height;
+    draw.scale_factor    = scale_factor;
+@@ -9550,7 +9559,14 @@ static void ozone_set_layout(
     ozone->dimensions.sidebar_entry_icon_padding     = SIDEBAR_ENTRY_ICON_PADDING * scale_factor;
     ozone->dimensions.sidebar_gradient_height        = SIDEBAR_GRADIENT_HEIGHT * scale_factor;
  
