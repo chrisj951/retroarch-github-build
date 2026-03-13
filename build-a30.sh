@@ -39,6 +39,10 @@ export CFLAGS="--sysroot=$SYSROOT -march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=ha
 export CXXFLAGS="$CFLAGS"
 export LDFLAGS="--sysroot=$SYSROOT -L$SYSROOT/usr/lib"
 
+# Remove fontconfig from sysroot so configure won't auto-detect it
+# (not present on the A30 device, and drags in libexpat/libpng16)
+rm -f "$SYSROOT/usr/lib/libfontconfig"* "$SYSROOT/usr/lib/pkgconfig/fontconfig.pc"
+
 # Configure for A30: Mali fbdev + SDL2 + GLES2
 ./configure --host=arm-a30-linux-gnueabihf \
     --disable-x11 \
@@ -61,7 +65,6 @@ export LDFLAGS="--sysroot=$SYSROOT -L$SYSROOT/usr/lib"
     --enable-ssl \
     --enable-command \
     --enable-freetype \
-    --disable-fontconfig \
     --enable-builtinzlib \
     --enable-zlib \
     --enable-neon
