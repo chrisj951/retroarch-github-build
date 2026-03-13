@@ -88,6 +88,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mv output/retroarch output/retroarch.A30
+          mv output/retroarch output/RA32.A30
           TAG="beta-${GITHUB_REF_NAME}"
-          gh release upload "$TAG" output/retroarch.A30 --clobber
+          gh release upload "$TAG" output/RA32.A30 --clobber
