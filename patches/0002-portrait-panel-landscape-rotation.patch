@@ -201,3 +201,23 @@ index 85a207c..2781e88 100644
           if (((float)OZONE_SIDEBAR_WIDTH * adjusted_scale)
                 > new_width)
              adjusted_scale      = (new_width / (float)OZONE_SIDEBAR_WIDTH);
+diff --git a/menu/drivers/ozone.c b/menu/drivers/ozone.c
+index 2c26c12..c129ed8 100644
+--- a/menu/drivers/ozone.c
++++ b/menu/drivers/ozone.c
+@@ -9550,7 +9550,14 @@ static void ozone_set_layout(
+    ozone->dimensions.sidebar_entry_icon_padding     = SIDEBAR_ENTRY_ICON_PADDING * scale_factor;
+    ozone->dimensions.sidebar_gradient_height        = SIDEBAR_GRADIENT_HEIGHT * scale_factor;
+ 
+-   ozone->dimensions.sidebar_width_normal           = SIDEBAR_WIDTH * scale_factor;
++   /* Use a narrower sidebar on rotated displays (portrait panel in
++    * landscape) to prevent it from dominating the small screen while
++    * keeping text and icons at full scale. */
++   {
++      unsigned vid_rot = config_get_ptr()->uints.video_rotation;
++      float sidebar_sf = (vid_rot % 2 != 0) ? scale_factor * 0.6f : scale_factor;
++      ozone->dimensions.sidebar_width_normal           = SIDEBAR_WIDTH * sidebar_sf;
++   }
+    ozone->dimensions.sidebar_width_collapsed        = ozone->dimensions.sidebar_entry_icon_size
+          + ozone->dimensions.sidebar_entry_icon_padding * 2
+          + ozone->dimensions.sidebar_padding_horizontal * 2;
