@@ -1,11 +1,11 @@
 diff --git a/gfx/drivers_context/mali_fbdev_ctx.c b/gfx/drivers_context/mali_fbdev_ctx.c
-index 7d66df0..a1b2c3e 100644
+index 9522007..0ab3e5d 100644
 --- a/gfx/drivers_context/mali_fbdev_ctx.c
 +++ b/gfx/drivers_context/mali_fbdev_ctx.c
-@@ -91,10 +91,22 @@ static int gfx_ctx_mali_fbdev_get_vinfo(void *data)
+@@ -91,11 +91,25 @@ static int gfx_ctx_mali_fbdev_get_vinfo(void *data)
     close(fd);
     fd = -1;
-
+ 
 -   mali->width                = vinfo.xres;
 -   mali->height               = vinfo.yres;
 -
@@ -30,6 +30,6 @@ index 7d66df0..a1b2c3e 100644
 +      mali->native_window.width  = vinfo.xres;
 +      mali->native_window.height = vinfo.yres;
 +   }
-
+ 
     if (vinfo.pixclock)
     {
