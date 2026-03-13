@@ -61,6 +61,7 @@ export LDFLAGS="--sysroot=$SYSROOT -L$SYSROOT/usr/lib"
     --enable-ssl \
     --enable-command \
     --enable-freetype \
+    --disable-fontconfig \
     --enable-builtinzlib \
     --enable-zlib \
     --enable-neon
