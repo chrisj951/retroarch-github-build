@@ -39,6 +39,16 @@ export CFLAGS="--sysroot=$SYSROOT -march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=ha
 export CXXFLAGS="$CFLAGS"
 export LDFLAGS="--sysroot=$SYSROOT -L$SYSROOT/usr/lib"
 
+# Diagnostic: test the cross-compiler before configure
+echo "=== Compiler diagnostic ==="
+echo "CC=$CC"
+which "$CC" && echo "found at: $(which "$CC")"
+cat "$(which "$CC")"
+echo "--- test compile ---"
+echo 'int main(void){return 0;}' > /tmp/test.c
+$CC -o /tmp/test_arm /tmp/test.c -v 2>&1 || echo "COMPILER TEST FAILED (exit $?)"
+echo "=== end diagnostic ==="
+
 # Configure for A30: Mali fbdev + SDL2 + GLES2
 ./configure --host=arm-a30-linux-gnueabihf \
     --disable-x11 \
