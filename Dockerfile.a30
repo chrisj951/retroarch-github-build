@@ -27,6 +27,12 @@ RUN SYSROOT=/opt/a30/arm-a30-linux-gnueabihf/sysroot && \
     printf '#!/bin/sh\nexec /opt/a30/bin/arm-a30-linux-gnueabihf-c++.br_real --sysroot=%s "$@"\n' "$SYSROOT" > /opt/a30/bin/arm-a30-linux-gnueabihf-g++ && \
     chmod +x /opt/a30/bin/arm-a30-linux-gnueabihf-gcc /opt/a30/bin/arm-a30-linux-gnueabihf-g++
 
+# Create cross pkg-config wrapper (configure looks for ${CROSS_COMPILE}pkg-config)
+RUN SYSROOT=/opt/a30/arm-a30-linux-gnueabihf/sysroot && \
+    printf '#!/bin/sh\nexport PKG_CONFIG_SYSROOT_DIR=%s\nexport PKG_CONFIG_LIBDIR=%s/usr/lib/pkgconfig\nexec pkg-config "$@"\n' \
+    "$SYSROOT" "$SYSROOT" > /opt/a30/bin/arm-a30-linux-gnueabihf-pkg-config && \
+    chmod +x /opt/a30/bin/arm-a30-linux-gnueabihf-pkg-config
+
 # Restore sysroot/lib symlinks stripped by tarball (needed by glibc linker scripts)
 RUN SYSROOT=/opt/a30/arm-a30-linux-gnueabihf/sysroot && \
     cd "$SYSROOT/lib" && \
