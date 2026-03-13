@@ -1,56 +1,22 @@
 diff --git a/gfx/drivers/gl2.c b/gfx/drivers/gl2.c
-index d39eb15..a81c0c9 100644
+index d39eb15..f7adeff 100644
 --- a/gfx/drivers/gl2.c
 +++ b/gfx/drivers/gl2.c
-@@ -1250,11 +1250,42 @@ static void gl2_set_projection(gl2_t *gl,
-         0.0f,     0.0f,    0.0f,    1.0f }
-    };
-    float radians, cosine, sine;
-+   math_matrix_4x4 ortho_pure;
+@@ -1308,7 +1308,16 @@ static void gl2_set_viewport(gl2_t *gl,
+       gl->vp.height = vp_height;
+    }
  
-    /* Calculate projection. */
-    matrix_4x4_ortho(gl->mvp_no_rot, ortho->left, ortho->right,
-          ortho->bottom, ortho->top, ortho->znear, ortho->zfar);
- 
-+   /* Save pure ortho before baking video_rotation into mvp_no_rot.
-+    * mvp uses the pure ortho so video_rotation is not applied twice. */
-+   ortho_pure = gl->mvp_no_rot;
-+
-+   /* Bake video_rotation into mvp_no_rot so that OSD, fonts, overlays
-+    * and menus are rotated to match the physical display orientation
-+    * (e.g. portrait panel used in landscape on Miyoo A30). */
+-   glViewport(gl->vp.x, gl->vp.y, gl->vp.width, gl->vp.height);
++   /* When video_rotation is 90/270, the logical viewport (calculated for
++    * landscape dimensions) must be mapped to the physical portrait
++    * framebuffer by swapping x<->y and width<->height. */
 +   {
 +      unsigned vid_rot = config_get_ptr()->uints.video_rotation;
-+      if (vid_rot != 0)
-+      {
-+         float vr_rad             = M_PI * (vid_rot * 90) / 180.0f;
-+         float vr_cos             = cosf(vr_rad);
-+         float vr_sin             = sinf(vr_rad);
-+         math_matrix_4x4 vr_rot  = {
-+            { 0.0f, 0.0f, 0.0f, 0.0f,
-+              0.0f, 0.0f, 0.0f, 0.0f,
-+              0.0f, 0.0f, 0.0f, 0.0f,
-+              0.0f, 0.0f, 0.0f, 1.0f }
-+         };
-+         math_matrix_4x4 tmp;
-+         MAT_ELEM_4X4(vr_rot, 0, 0) = vr_cos;
-+         MAT_ELEM_4X4(vr_rot, 0, 1) = -vr_sin;
-+         MAT_ELEM_4X4(vr_rot, 1, 0) = vr_sin;
-+         MAT_ELEM_4X4(vr_rot, 1, 1) = vr_cos;
-+         matrix_4x4_multiply(tmp, vr_rot, gl->mvp_no_rot);
-+         gl->mvp_no_rot = tmp;
-+      }
++      if (vid_rot % 2 != 0)
++         glViewport(gl->vp.y, gl->vp.x, gl->vp.height, gl->vp.width);
++      else
++         glViewport(gl->vp.x, gl->vp.y, gl->vp.width, gl->vp.height);
 +   }
-+
-    if (!allow_rotate)
-    {
-       gl->mvp = gl->mvp_no_rot;
-@@ -1268,7 +1299,7 @@ static void gl2_set_projection(gl2_t *gl,
-    MAT_ELEM_4X4(rot, 0, 1) = -sine;
-    MAT_ELEM_4X4(rot, 1, 0) = sine;
-    MAT_ELEM_4X4(rot, 1, 1) = cosine;
--   matrix_4x4_multiply(gl->mvp, rot, gl->mvp_no_rot);
-+   matrix_4x4_multiply(gl->mvp, rot, ortho_pure);
- }
+    gl2_set_projection(gl, &default_ortho, allow_rotate);
  
- static void gl2_set_viewport(gl2_t *gl,
+    /* Set last backbuffer viewport. */
