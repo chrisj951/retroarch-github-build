@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -20,7 +20,9 @@ RUN tar xzf /tmp/a30_toolchain-v1.0.tar.gz -C /opt && rm /tmp/a30_toolchain-v1.0
 
 # Create toolchain wrapper scripts (buildroot wrappers weren't included in tarball)
 # The .br_real binaries need --sysroot passed explicitly
+# rm -f first: tarball may contain symlinks that would redirect the write
 RUN SYSROOT=/opt/a30/arm-a30-linux-gnueabihf/sysroot && \
+    rm -f /opt/a30/bin/arm-a30-linux-gnueabihf-gcc /opt/a30/bin/arm-a30-linux-gnueabihf-g++ && \
     printf '#!/bin/sh\nexec /opt/a30/bin/arm-a30-linux-gnueabihf-gcc-13.2.0.br_real --sysroot=%s "$@"\n' "$SYSROOT" > /opt/a30/bin/arm-a30-linux-gnueabihf-gcc && \
     printf '#!/bin/sh\nexec /opt/a30/bin/arm-a30-linux-gnueabihf-c++.br_real --sysroot=%s "$@"\n' "$SYSROOT" > /opt/a30/bin/arm-a30-linux-gnueabihf-g++ && \
     chmod +x /opt/a30/bin/arm-a30-linux-gnueabihf-gcc /opt/a30/bin/arm-a30-linux-gnueabihf-g++
