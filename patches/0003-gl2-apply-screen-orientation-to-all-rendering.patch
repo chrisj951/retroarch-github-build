@@ -1,8 +1,8 @@
 diff --git a/gfx/drivers/gl2.c b/gfx/drivers/gl2.c
-index d39eb15..7c3d79d 100644
+index d39eb15..8d2ebf8 100644
 --- a/gfx/drivers/gl2.c
 +++ b/gfx/drivers/gl2.c
-@@ -1255,6 +1255,31 @@ static void gl2_set_projection(gl2_t *gl,
+@@ -1255,6 +1255,33 @@ static void gl2_set_projection(gl2_t *gl,
     matrix_4x4_ortho(gl->mvp_no_rot, ortho->left, ortho->right,
           ortho->bottom, ortho->top, ortho->znear, ortho->zfar);
  
@@ -23,11 +23,13 @@ index d39eb15..7c3d79d 100644
 +              0.0f, 0.0f, 0.0f, 0.0f,
 +              0.0f, 0.0f, 0.0f, 1.0f }
 +         };
++         math_matrix_4x4 tmp;
 +         MAT_ELEM_4X4(so_rot, 0, 0) = so_cos;
 +         MAT_ELEM_4X4(so_rot, 0, 1) = -so_sin;
 +         MAT_ELEM_4X4(so_rot, 1, 0) = so_sin;
 +         MAT_ELEM_4X4(so_rot, 1, 1) = so_cos;
-+         matrix_4x4_multiply(gl->mvp_no_rot, so_rot, gl->mvp_no_rot);
++         matrix_4x4_multiply(tmp, so_rot, gl->mvp_no_rot);
++         gl->mvp_no_rot = tmp;
 +      }
 +   }
 +
