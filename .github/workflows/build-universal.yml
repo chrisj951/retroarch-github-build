@@ -6,6 +6,11 @@ on:
       retroarch_version:
         description: 'RetroArch version tag'
         default: 'v1.22.2'
+  workflow_call:
+    inputs:
+      retroarch_version:
+        type: string
+        default: 'v1.22.2'
 
 permissions:
   contents: write

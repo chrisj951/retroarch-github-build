@@ -1,0 +1,22 @@
+name: Build All
+
+on:
+  workflow_dispatch:
+    inputs:
+      retroarch_version:
+        description: 'RetroArch version tag'
+        default: 'v1.22.2'
+
+permissions:
+  contents: write
+
+jobs:
+  universal:
+    uses: ./.github/workflows/build-universal.yml
+    with:
+      retroarch_version: ${{ inputs.retroarch_version }}
+
+  a30:
+    uses: ./.github/workflows/build-a30.yml
+    with:
+      retroarch_version: ${{ inputs.retroarch_version }}
