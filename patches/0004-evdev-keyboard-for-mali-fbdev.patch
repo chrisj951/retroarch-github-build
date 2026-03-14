@@ -1,0 +1,202 @@
+diff --git a/input/drivers/sdl_input.c b/input/drivers/sdl_input.c
+index a65a948..009c31f 100644
+--- a/input/drivers/sdl_input.c
++++ b/input/drivers/sdl_input.c
+@@ -43,6 +43,18 @@
+ #include <dlfcn.h>
+ #endif
+ 
++/* When using mali_fbdev, SDL2's video subsystem is never initialized
++ * (EGL goes through the mali fbdev context instead), so SDL2 keyboard
++ * input doesn't work.  Fall back to reading evdev events directly
++ * from /dev/input/event* keyboard devices. */
++#ifdef HAVE_MALI_FBDEV
++#include <fcntl.h>
++#include <unistd.h>
++#include <sys/ioctl.h>
++#include <linux/input.h>
++#define EVDEV_MAX_KBD_FDS 4
++#endif
++
+ typedef struct sdl_input
+ {
+    int mouse_x;
+@@ -64,6 +76,118 @@ typedef struct sdl_input
+ #endif
+ } sdl_input_t;
+ 
++#ifdef HAVE_MALI_FBDEV
++/* File-scope evdev keyboard state — needed because sdl_key_pressed()
++ * is a static function without access to the sdl_input_t struct. */
++static int    sdl_evdev_kbd_fds[EVDEV_MAX_KBD_FDS];
++static int    sdl_evdev_kbd_count = 0;
++static uint8_t sdl_evdev_key_state[KEY_CNT];
++/* Reverse LUT: retro_key -> linux evdev key code */
++static uint16_t sdl_evdev_rk_to_linux[RETROK_LAST];
++
++static void sdl_evdev_build_lut(void)
++{
++   int i;
++   memset(sdl_evdev_rk_to_linux, 0, sizeof(sdl_evdev_rk_to_linux));
++   for (i = 0; rarch_key_map_linux[i].rk != RETROK_UNKNOWN; i++)
++   {
++      if (rarch_key_map_linux[i].rk < RETROK_LAST)
++         sdl_evdev_rk_to_linux[rarch_key_map_linux[i].rk] =
++            rarch_key_map_linux[i].sym;
++   }
++}
++
++static void sdl_evdev_open_keyboards(void)
++{
++   int i;
++   char path[64];
++   uint8_t key_bits[(KEY_CNT + 7) / 8];
++
++   sdl_evdev_kbd_count = 0;
++   memset(sdl_evdev_key_state, 0, sizeof(sdl_evdev_key_state));
++
++   for (i = 0; i < 16 && sdl_evdev_kbd_count < EVDEV_MAX_KBD_FDS; i++)
++   {
++      int fd, j;
++      bool has_keyboard_keys = false;
++
++      snprintf(path, sizeof(path), "/dev/input/event%d", i);
++      fd = open(path, O_RDONLY | O_NONBLOCK);
++      if (fd < 0)
++         continue;
++
++      memset(key_bits, 0, sizeof(key_bits));
++      if (ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(key_bits)), key_bits) < 0)
++      {
++         close(fd);
++         continue;
++      }
++
++      /* Check for keys in standard keyboard range (1-127).
++       * This distinguishes keyboard devices from joypad devices
++       * which only have BTN_* codes (0x100+). */
++      for (j = 1; j < 128; j++)
++      {
++         if (key_bits[j / 8] & (1 << (j % 8)))
++         {
++            has_keyboard_keys = true;
++            break;
++         }
++      }
++
++      if (has_keyboard_keys)
++         sdl_evdev_kbd_fds[sdl_evdev_kbd_count++] = fd;
++      else
++         close(fd);
++   }
++}
++
++static void sdl_evdev_poll_keyboards(void)
++{
++   int i;
++   struct input_event ev;
++
++   for (i = 0; i < sdl_evdev_kbd_count; i++)
++   {
++      while (read(sdl_evdev_kbd_fds[i], &ev, sizeof(ev))
++            == (ssize_t)sizeof(ev))
++      {
++         if (ev.type == EV_KEY && ev.code < KEY_CNT)
++         {
++            bool pressed = (ev.value != 0); /* 1=press, 2=repeat */
++            int rk;
++
++            sdl_evdev_key_state[ev.code] = pressed ? 1 : 0;
++
++            /* Translate linux key code to retro_key and forward
++             * to RA's keyboard event system */
++            for (rk = 0; rarch_key_map_linux[rk].rk != RETROK_UNKNOWN; rk++)
++            {
++               if (rarch_key_map_linux[rk].sym == (unsigned)ev.code)
++               {
++                  input_keyboard_event(pressed,
++                     rarch_key_map_linux[rk].rk,
++                     0, 0, RETRO_DEVICE_KEYBOARD);
++                  break;
++               }
++            }
++         }
++      }
++   }
++}
++
++static void sdl_evdev_close_keyboards(void)
++{
++   int i;
++   for (i = 0; i < sdl_evdev_kbd_count; i++)
++   {
++      if (sdl_evdev_kbd_fds[i] >= 0)
++         close(sdl_evdev_kbd_fds[i]);
++   }
++   sdl_evdev_kbd_count = 0;
++}
++#endif
++
+ #ifdef WEBOS
+ enum sdl_webos_special_key
+ {
+@@ -82,6 +206,11 @@ static void *sdl_input_init(const char *joypad_driver)
+ 
+    input_keymaps_init_keyboard_lut(rarch_key_map_sdl);
+ 
++#ifdef HAVE_MALI_FBDEV
++   sdl_evdev_build_lut();
++   sdl_evdev_open_keyboards();
++#endif
++
+    return sdl;
+ }
+ 
+@@ -119,10 +248,22 @@ static bool sdl_key_pressed(int key)
+       return true;
+ #endif
+ 
+-   if (sym >= (unsigned)num_keys)
+-      return false;
++   if (sym < (unsigned)num_keys && keymap[sym])
++      return true;
+ 
+-   return keymap[sym];
++#ifdef HAVE_MALI_FBDEV
++   /* Also check direct evdev keyboard state — SDL2 keyboard input
++    * doesn't work on mali_fbdev since SDL_INIT_VIDEO is never called. */
++   {
++      unsigned linux_code = (key < RETROK_LAST)
++         ? sdl_evdev_rk_to_linux[key] : 0;
++      if (linux_code && linux_code < KEY_CNT
++            && sdl_evdev_key_state[linux_code])
++         return true;
++   }
++#endif
++
++   return false;
+ }
+ 
+ static int16_t sdl_input_state(
+@@ -352,6 +493,10 @@ static void sdl_input_free(void *data)
+    linux_close_illuminance_sensor(sdl->illuminance_sensor); /* noop if NULL */
+ #endif
+ 
++#ifdef HAVE_MALI_FBDEV
++   sdl_evdev_close_keyboards();
++#endif
++
+    free(data);
+ }
+ 
+@@ -456,6 +601,10 @@ static void sdl_input_poll(void *data)
+ 
+    sdl_poll_mouse(sdl);
+ 
++#ifdef HAVE_MALI_FBDEV
++   sdl_evdev_poll_keyboards();
++#endif
++
+ #ifdef HAVE_SDL2
+    while (SDL_PeepEvents(&event, 1,
+             SDL_GETEVENT, SDL_KEYDOWN, SDL_MOUSEWHEEL) > 0)
