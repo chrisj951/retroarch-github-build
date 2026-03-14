@@ -129,7 +129,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,519 @@
+@@ -0,0 +1,523 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
@@ -207,6 +207,7 @@ index 0000000..0000000
 +   bool        was_paused;       /* pause state before IGM opened  */
 +   int         selected;
 +   int         pending_action;   /* deferred action, or IGM_NO_PENDING */
++   int         deferred_close;  /* action waiting for button release  */
 +   font_data_t *font;
 +   font_data_t *font_small;
 +   uint16_t    prev_buttons;     /* previous frame joypad bits      */
@@ -323,6 +324,7 @@ index 0000000..0000000
 +      igm.active         = true;
 +      igm.selected       = 0;
 +      igm.pending_action = IGM_NO_PENDING;
++      igm.deferred_close = IGM_NO_PENDING;
 +
 +      /* Flush button state so we don't act on the toggle press itself */
 +      igm.prev_buttons   = 0xFFFF;
@@ -394,6 +396,19 @@ index 0000000..0000000
 +   uint16_t prev = igm.prev_buttons;
 +   igm.prev_buttons = cur;
 +
++   /* Wait for A/B release before executing a close action.
++    * This prevents the button press from bleeding into the game. */
++   if (igm.deferred_close != IGM_NO_PENDING)
++   {
++      if (!(cur & ((1 << RETRO_DEVICE_ID_JOYPAD_A)
++                  | (1 << RETRO_DEVICE_ID_JOYPAD_B))))
++      {
++         igm.pending_action = igm.deferred_close;
++         igm.deferred_close = IGM_NO_PENDING;
++      }
++      return;
++   }
++
 +   /* D-pad up */
 +   if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_UP))
 +   {
@@ -419,10 +434,10 @@ index 0000000..0000000
 +         command_event(CMD_EVENT_SAVE_STATE_INCREMENT, NULL);
 +   }
 +
-+   /* B button — close (resume) */
++   /* B button — close (resume), deferred until released */
 +   if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_B))
 +   {
-+      igm.pending_action = IGM_RESUME;
++      igm.deferred_close = IGM_RESUME;
 +      return;
 +   }
 +
@@ -438,8 +453,9 @@ index 0000000..0000000
 +            igm.preview_slot = IGM_PREVIEW_NO_SLOT;
 +            break;
 +         default:
-+            /* All other actions are deferred to process_pending */
-+            igm.pending_action = igm.selected;
++            /* All other actions wait for button release, then
++             * get picked up by process_pending next frame. */
++            igm.deferred_close = igm.selected;
 +            return;
 +      }
 +   }
@@ -636,18 +652,6 @@ index 0000000..0000000
 +      }
 +   }
 +
-+   /* ── Bottom hint ───────────────────────────────────── */
-+   if (igm.font_small)
-+   {
-+      gfx_display_draw_text(igm.font_small,
-+            "D-Pad Navigate   A Select   B Close",
-+            (float)text_cx,
-+            (float)(panel_y + panel_h + video_height / 30),
-+            video_width, video_height,
-+            TEXT_COLOR_NORMAL,
-+            TEXT_ALIGN_CENTER,
-+            1.0f, false, 0.0f, false);
-+   }
 +}
 diff --git a/spruce_igm.h b/spruce_igm.h
 new file mode 100644
