@@ -1,5 +1,5 @@
 diff --git a/gfx/drivers/gl2.c b/gfx/drivers/gl2.c
-index d39eb15..e0c6d5e 100644
+index d39eb15..240bd5a 100644
 --- a/gfx/drivers/gl2.c
 +++ b/gfx/drivers/gl2.c
 @@ -269,6 +269,25 @@ static const shader_backend_t *gl2_shader_ctx_drivers[] = {
@@ -28,25 +28,44 @@ index d39eb15..e0c6d5e 100644
  /* Used for the last pass when rendering to the back buffer. */
  static const GLfloat vertexes_flipped[8] = {
     0, 1,
-@@ -514,7 +533,7 @@ static void gfx_display_gl2_draw(gfx_display_ctx_draw_t *draw,
+@@ -514,7 +533,20 @@ static void gfx_display_gl2_draw(gfx_display_ctx_draw_t *draw,
     if (!draw->coords->lut_tex_coord)
        draw->coords->lut_tex_coord = &gl2_tex_coords[0];
  
 -   glViewport(draw->x, draw->y, draw->width, draw->height);
-+   gl2_viewport_rot(draw->x, draw->y, draw->width, draw->height);
++   /* gfx_display_draw_quad pre-flips y (height - y - h) for GL bottom-up.
++    * When the viewport is swapped for a rotated panel, that flipped y ends
++    * up as the physical x coordinate, inverting the layout.  Undo the flip
++    * so the original top-down y maps directly to physical x. */
++   {
++      unsigned vid_rot = config_get_ptr()->uints.video_rotation;
++      if (vid_rot % 2 != 0)
++      {
++         int unflipped_y = (int)video_height - draw->y - (int)draw->height;
++         gl2_viewport_rot(draw->x, unflipped_y, draw->width, draw->height);
++      }
++      else
++         gl2_viewport_rot(draw->x, draw->y, draw->width, draw->height);
++   }
     glBindTexture(GL_TEXTURE_2D, (GLuint)draw->texture);
  
     gl->shader->set_coords(gl->shader_data, draw->coords);
-@@ -616,7 +635,7 @@ static void gfx_display_gl2_scissor_begin(
+@@ -616,7 +648,13 @@ static void gfx_display_gl2_scissor_begin(
        int x, int y,
        unsigned width, unsigned height)
  {
 -   glScissor(x, video_height - y - height, width, height);
-+   gl2_scissor_rot(x, video_height - y - height, width, height);
++   {
++      unsigned vid_rot = config_get_ptr()->uints.video_rotation;
++      if (vid_rot % 2 != 0)
++         gl2_scissor_rot(x, y, width, height);
++      else
++         gl2_scissor_rot(x, video_height - y - height, width, height);
++   }
     glEnable(GL_SCISSOR_TEST);
  #ifdef MALI_BUG
     /* TODO/FIXME: If video width/height changes between
-@@ -636,7 +655,7 @@ static void gfx_display_gl2_scissor_end(
+@@ -636,7 +674,7 @@ static void gfx_display_gl2_scissor_end(
        unsigned video_width,
        unsigned video_height)
  {
@@ -55,7 +74,7 @@ index d39eb15..e0c6d5e 100644
     glDisable(GL_SCISSOR_TEST);
  #ifdef MALI_BUG
     scissor_set_rectangle(0, video_width - 1, 0, video_height - 1, 0);
-@@ -1250,11 +1269,42 @@ static void gl2_set_projection(gl2_t *gl,
+@@ -1250,11 +1288,42 @@ static void gl2_set_projection(gl2_t *gl,
          0.0f,     0.0f,    0.0f,    1.0f }
     };
     float radians, cosine, sine;
@@ -98,7 +117,7 @@ index d39eb15..e0c6d5e 100644
     if (!allow_rotate)
     {
        gl->mvp = gl->mvp_no_rot;
-@@ -1268,7 +1318,7 @@ static void gl2_set_projection(gl2_t *gl,
+@@ -1268,7 +1337,7 @@ static void gl2_set_projection(gl2_t *gl,
     MAT_ELEM_4X4(rot, 0, 1) = -sine;
     MAT_ELEM_4X4(rot, 1, 0) = sine;
     MAT_ELEM_4X4(rot, 1, 1) = cosine;
@@ -107,7 +126,7 @@ index d39eb15..e0c6d5e 100644
  }
  
  static void gl2_set_viewport(gl2_t *gl,
-@@ -1308,7 +1358,7 @@ static void gl2_set_viewport(gl2_t *gl,
+@@ -1308,7 +1377,7 @@ static void gl2_set_viewport(gl2_t *gl,
        gl->vp.height = vp_height;
     }
  
@@ -116,7 +135,7 @@ index d39eb15..e0c6d5e 100644
     gl2_set_projection(gl, &default_ortho, allow_rotate);
  
     /* Set last backbuffer viewport. */
-@@ -2734,7 +2784,7 @@ static void gl2_render_overlay(gl2_t *gl)
+@@ -2734,7 +2803,7 @@ static void gl2_render_overlay(gl2_t *gl)
     glEnable(GL_BLEND);
  
     if (gl->flags & GL2_FLAG_OVERLAY_FULLSCREEN)
@@ -125,7 +144,7 @@ index d39eb15..e0c6d5e 100644
  
     /* Ensure that we reset the attrib array. */
     gl->shader->use(gl, gl->shader_data,
-@@ -2760,7 +2810,7 @@ static void gl2_render_overlay(gl2_t *gl)
+@@ -2760,7 +2829,7 @@ static void gl2_render_overlay(gl2_t *gl)
     gl->coords.color     = gl->white_color_ptr;
     gl->coords.vertices  = 4;
     if (gl->flags & GL2_FLAG_OVERLAY_FULLSCREEN)
@@ -134,7 +153,7 @@ index d39eb15..e0c6d5e 100644
  }
  #endif
  
-@@ -3332,9 +3382,9 @@ static INLINE void gl2_draw_texture(gl2_t *gl)
+@@ -3332,9 +3401,9 @@ static INLINE void gl2_draw_texture(gl2_t *gl)
  
     if (gl->flags & GL2_FLAG_MENU_TEXTURE_FULLSCREEN)
     {
@@ -201,26 +220,6 @@ index 85a207c..2781e88 100644
           if (((float)OZONE_SIDEBAR_WIDTH * adjusted_scale)
                 > new_width)
              adjusted_scale      = (new_width / (float)OZONE_SIDEBAR_WIDTH);
-diff --git a/menu/drivers/ozone.c b/menu/drivers/ozone.c
-index 2c26c12..c129ed8 100644
---- a/menu/drivers/ozone.c
-+++ b/menu/drivers/ozone.c
-@@ -9550,7 +9550,14 @@ static void ozone_set_layout(
-    ozone->dimensions.sidebar_entry_icon_padding     = SIDEBAR_ENTRY_ICON_PADDING * scale_factor;
-    ozone->dimensions.sidebar_gradient_height        = SIDEBAR_GRADIENT_HEIGHT * scale_factor;
- 
--   ozone->dimensions.sidebar_width_normal           = SIDEBAR_WIDTH * scale_factor;
-+   /* Use a narrower sidebar on rotated displays (portrait panel in
-+    * landscape) to prevent it from dominating the small screen while
-+    * keeping text and icons at full scale. */
-+   {
-+      unsigned vid_rot = config_get_ptr()->uints.video_rotation;
-+      float sidebar_sf = (vid_rot % 2 != 0) ? scale_factor * 0.6f : scale_factor;
-+      ozone->dimensions.sidebar_width_normal           = SIDEBAR_WIDTH * sidebar_sf;
-+   }
-    ozone->dimensions.sidebar_width_collapsed        = ozone->dimensions.sidebar_entry_icon_size
-          + ozone->dimensions.sidebar_entry_icon_padding * 2
-          + ozone->dimensions.sidebar_padding_horizontal * 2;
 diff --git a/gfx/video_driver.c b/gfx/video_driver.c
 index 7917922..9507230 100644
 --- a/gfx/video_driver.c
@@ -252,3 +251,23 @@ index 7917922..9507230 100644
        return (1.0f / out_aspect);
  
     return out_aspect;
+diff --git a/menu/drivers/ozone.c b/menu/drivers/ozone.c
+index 2c26c12..c129ed8 100644
+--- a/menu/drivers/ozone.c
++++ b/menu/drivers/ozone.c
+@@ -9550,7 +9550,14 @@ static void ozone_set_layout(
+    ozone->dimensions.sidebar_entry_icon_padding     = SIDEBAR_ENTRY_ICON_PADDING * scale_factor;
+    ozone->dimensions.sidebar_gradient_height        = SIDEBAR_GRADIENT_HEIGHT * scale_factor;
+ 
+-   ozone->dimensions.sidebar_width_normal           = SIDEBAR_WIDTH * scale_factor;
++   /* Use a narrower sidebar on rotated displays (portrait panel in
++    * landscape) to prevent it from dominating the small screen while
++    * keeping text and icons at full scale. */
++   {
++      unsigned vid_rot = config_get_ptr()->uints.video_rotation;
++      float sidebar_sf = (vid_rot % 2 != 0) ? scale_factor * 0.6f : scale_factor;
++      ozone->dimensions.sidebar_width_normal           = SIDEBAR_WIDTH * sidebar_sf;
++   }
+    ozone->dimensions.sidebar_width_collapsed        = ozone->dimensions.sidebar_entry_icon_size
+          + ozone->dimensions.sidebar_entry_icon_padding * 2
+          + ozone->dimensions.sidebar_padding_horizontal * 2;
