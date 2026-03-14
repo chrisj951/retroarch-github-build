@@ -1,0 +1,45 @@
+diff --git a/input/drivers_joypad/sdl_joypad.c b/input/drivers_joypad/sdl_joypad.c
+index 49afe55..b568511 100644
+--- a/input/drivers_joypad/sdl_joypad.c
++++ b/input/drivers_joypad/sdl_joypad.c
+@@ -106,7 +106,23 @@ static void sdl_pad_connect(unsigned id)
+    SDL_JoystickGUID guid;
+    uint16_t *guid_ptr         = NULL;
+ 
+-   if (SDL_IsGameController(id))
++   /* Extract vendor:product from the GUID before opening the device
++    * so we can skip SDL_GameControllerOpen for devices that spoof
++    * well-known IDs but have a different button layout.
++    * The MIYOO Pad1 virtual joypad shares the Xbox 360 vendor:product
++    * (045e:028e), causing SDL2 to apply the wrong button mapping. */
++   guid     = SDL_JoystickGetDeviceGUID(id);
++   guid_ptr = (uint16_t*)guid.data;
++#ifdef __linux
++   vendor   = guid_ptr[2];
++   product  = guid_ptr[4];
++#elif _WIN32
++   vendor   = guid_ptr[0];
++   product  = guid_ptr[1];
++#endif
++
++   if (SDL_IsGameController(id)
++         && !(vendor == 0x045e && product == 0x028e))
+    {
+       pad->controller = SDL_GameControllerOpen(id);
+       pad->joypad     = SDL_GameControllerGetJoystick(pad->controller);
+@@ -133,15 +149,6 @@ static void sdl_pad_connect(unsigned id)
+    }
+ 
+ #ifdef HAVE_SDL2
+-   guid       = SDL_JoystickGetGUID(pad->joypad);
+-   guid_ptr   = (uint16_t*)guid.data;
+-#ifdef __linux
+-   vendor     = guid_ptr[2];
+-   product    = guid_ptr[4];
+-#elif _WIN32
+-   vendor     = guid_ptr[0];
+-   product    = guid_ptr[1];
+-#endif
+ #ifdef WEBOS
+    if (vendor == 0x9999 && product == 0x9999)
+    {
