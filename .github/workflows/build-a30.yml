@@ -1,0 +1,52 @@
+name: Build RA32.A30
+
+on:
+  workflow_dispatch:
+    inputs:
+      retroarch_version:
+        description: 'RetroArch version tag'
+        default: 'v1.22.2'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create beta release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="beta-a30"
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" \
+            --target "${{ github.ref_name }}" \
+            --title "Beta - RA32.A30" \
+            --notes "RetroArch ${{ github.event.inputs.retroarch_version || 'v1.22.2' }} for Miyoo A30" \
+            --prerelease
+
+      - name: Download A30 toolchain
+        run: |
+          wget -q -O a30_toolchain-v1.0.tar.gz \
+            "https://github.com/steward-fu/website/releases/download/miyoo-a30/a30_toolchain-v1.0.tar.gz"
+
+      - name: Build Docker image
+        run: docker build -f Dockerfile.a30 -t ra-builder-a30 .
+
+      - name: Build RetroArch
+        run: |
+          mkdir -p output
+          docker run --rm \
+            -e RETROARCH_VERSION=${{ github.event.inputs.retroarch_version || 'v1.22.2' }} \
+            -v ${{ github.workspace }}/output:/output \
+            ra-builder-a30
+
+      - name: Upload binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv output/retroarch output/RA32.A30
+          gh release upload "beta-a30" output/RA32.A30 --clobber

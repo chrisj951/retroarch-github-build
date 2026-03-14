@@ -14,9 +14,9 @@ fi
 
 cd RetroArch
 
-# Apply patches
-if [ -d /patches ] && ls /patches/*.patch 1>/dev/null 2>&1; then
-    for patch in /patches/*.patch; do
+# Apply common patches
+if [ -d /patches/common ] && ls /patches/common/*.patch 1>/dev/null 2>&1; then
+    for patch in /patches/common/*.patch; do
         echo "Applying: $(basename "$patch")"
         git apply "$patch"
     done

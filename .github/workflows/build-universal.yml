@@ -1,0 +1,47 @@
+name: Build RA64.universal
+
+on:
+  workflow_dispatch:
+    inputs:
+      retroarch_version:
+        description: 'RetroArch version tag'
+        default: 'v1.22.2'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create beta release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="beta-universal"
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" \
+            --target "${{ github.ref_name }}" \
+            --title "Beta - RA64.universal" \
+            --notes "RetroArch ${{ github.event.inputs.retroarch_version || 'v1.22.2' }} universal aarch64 binary" \
+            --prerelease
+
+      - name: Build Docker image
+        run: docker build -t ra-builder .
+
+      - name: Build RetroArch
+        run: |
+          mkdir -p output
+          docker run --rm \
+            -e RETROARCH_VERSION=${{ github.event.inputs.retroarch_version || 'v1.22.2' }} \
+            -v ${{ github.workspace }}/output:/output \
+            ra-builder
+
+      - name: Upload binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv output/retroarch output/ra64.universal
+          gh release upload "beta-universal" output/ra64.universal --clobber

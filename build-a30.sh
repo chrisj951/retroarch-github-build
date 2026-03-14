@@ -14,13 +14,15 @@ fi
 
 cd RetroArch
 
-# Apply patches
-if [ -d /patches ] && ls /patches/*.patch 1>/dev/null 2>&1; then
-    for patch in /patches/*.patch; do
-        echo "Applying: $(basename "$patch")"
-        git apply "$patch"
-    done
-fi
+# Apply common patches, then a30-specific patches
+for dir in /patches/common /patches/a30; do
+    if [ -d "$dir" ] && ls "$dir"/*.patch 1>/dev/null 2>&1; then
+        for patch in "$dir"/*.patch; do
+            echo "Applying: $(basename "$patch")"
+            git apply "$patch"
+        done
+    fi
+done
 
 # A30 buildroot toolchain
 TOOLCHAIN=/opt/a30
