@@ -129,7 +129,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,525 @@
+@@ -0,0 +1,529 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
@@ -561,8 +561,12 @@ index 0000000..0000000
 +         if (i == IGM_SAVE_STATE || i == IGM_LOAD_STATE)
 +         {
 +            int slot = settings->ints.state_slot;
-+            snprintf(slot_buf, sizeof(slot_buf), "%s Slot %d",
-+                  igm_labels[i], slot);
++            if (slot < 0)
++               snprintf(slot_buf, sizeof(slot_buf), "%s Auto",
++                     igm_labels[i]);
++            else
++               snprintf(slot_buf, sizeof(slot_buf), "%s Slot %d",
++                     igm_labels[i], slot);
 +            label = slot_buf;
 +         }
 +         else
