@@ -129,7 +129,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,535 @@
+@@ -0,0 +1,625 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
@@ -199,6 +199,8 @@ index 0000000..0000000
 +
 +#define IGM_NO_PENDING      -1
 +#define IGM_PREVIEW_NO_SLOT  -999
++#define IGM_TEX_SIZE         64
++#define IGM_TEX_RADIUS       12
 +
 +/* ── State ─────────────────────────────────────────────────── */
 +
@@ -217,6 +219,7 @@ index 0000000..0000000
 +   unsigned    preview_tex_w;
 +   unsigned    preview_tex_h;
 +   int         preview_slot;     /* slot loaded, or IGM_PREVIEW_NO_SLOT */
++   uintptr_t   panel_tex;       /* rounded rect for 9-slice panel     */
 +} igm;
 +
 +/* ── Helpers ───────────────────────────────────────────────── */
@@ -237,6 +240,69 @@ index 0000000..0000000
 +/* Return buttons that just went from released → pressed */
 +#define IGM_PRESSED(cur, prev, btn) \
 +   (((cur) & (1 << (btn))) && !((prev) & (1 << (btn))))
++
++/* ── Procedural rounded-rect texture ───────────────────────── */
++
++static void igm_create_panel_texture(void)
++{
++   unsigned x, y;
++   uint32_t *pixels;
++   struct texture_image img;
++   unsigned r = IGM_TEX_RADIUS;
++   unsigned s = IGM_TEX_SIZE;
++
++   if (igm.panel_tex)
++      return;
++
++   pixels = (uint32_t *)calloc(s * s, sizeof(uint32_t));
++   if (!pixels)
++      return;
++
++   for (y = 0; y < s; y++)
++   {
++      for (x = 0; x < s; x++)
++      {
++         bool inside = true;
++
++         if (x < r && y < r)
++         {
++            int dx = (int)r - (int)x - 1;
++            int dy = (int)r - (int)y - 1;
++            inside = (dx * dx + dy * dy) <= (int)(r * r);
++         }
++         else if (x >= s - r && y < r)
++         {
++            int dx = (int)x - (int)(s - r);
++            int dy = (int)r - (int)y - 1;
++            inside = (dx * dx + dy * dy) <= (int)(r * r);
++         }
++         else if (x < r && y >= s - r)
++         {
++            int dx = (int)r - (int)x - 1;
++            int dy = (int)y - (int)(s - r);
++            inside = (dx * dx + dy * dy) <= (int)(r * r);
++         }
++         else if (x >= s - r && y >= s - r)
++         {
++            int dx = (int)x - (int)(s - r);
++            int dy = (int)y - (int)(s - r);
++            inside = (dx * dx + dy * dy) <= (int)(r * r);
++         }
++
++         pixels[y * s + x] = inside ? 0xFFFFFFFF : 0x00000000;
++      }
++   }
++
++   img.pixels        = pixels;
++   img.width         = s;
++   img.height        = s;
++   img.supports_rgba = true;
++
++   video_driver_texture_load(&img,
++         TEXTURE_FILTER_LINEAR, &igm.panel_tex);
++
++   free(pixels);
++}
 +
 +/* ── Preview texture management ────────────────────────────── */
 +
@@ -489,6 +555,8 @@ index 0000000..0000000
 +   if (!igm.font)
 +      return;
 +
++   igm_create_panel_texture();
++
 +   /* Handle input — may set pending_action for deferred execution */
 +   igm_handle_input();
 +
@@ -502,7 +570,8 @@ index 0000000..0000000
 +   int panel_w    = video_width  * 38 / 100;
 +   int item_h     = video_height * 8  / 100;
 +   int title_h    = item_h;
-+   int panel_h    = item_h * IGM_ITEM_COUNT + title_h;
++   int pad        = item_h / 3;
++   int panel_h    = item_h * IGM_ITEM_COUNT + title_h + pad;
 +   int panel_x    = margin;
 +   int panel_y    = (video_height - panel_h) / 2;
 +   int text_cx    = panel_x + panel_w / 2;
@@ -517,20 +586,41 @@ index 0000000..0000000
 +         video_width, video_height,
 +         color_dim_bg, NULL);
 +
-+   /* ── Panel shadow ──────────────────────────────────── */
-+   gfx_display_draw_quad(p_disp, userdata,
-+         video_width, video_height,
-+         panel_x + shadow_off, panel_y + shadow_off,
-+         panel_w, panel_h,
-+         video_width, video_height,
-+         color_shadow, NULL);
++   /* ── Panel (rounded via 9-slice) ──────────────────── */
++   {
++      math_matrix_4x4 mymat;
++      gfx_display_ctx_driver_t *dispctx = p_disp->dispctx;
++      float sf = (float)video_height / 480.0f;
++      if (sf > 2.0f) sf = 2.0f;
 +
-+   /* ── Panel background ──────────────────────────────── */
-+   gfx_display_draw_quad(p_disp, userdata,
-+         video_width, video_height,
-+         panel_x, panel_y, panel_w, panel_h,
-+         video_width, video_height,
-+         color_panel, NULL);
++      matrix_4x4_identity(mymat);
++
++      if (dispctx && dispctx->blend_begin)
++         dispctx->blend_begin(userdata);
++
++      /* Shadow */
++      gfx_display_draw_texture_slice(p_disp, userdata,
++            video_width, video_height,
++            panel_x + shadow_off, panel_y + shadow_off,
++            IGM_TEX_SIZE, IGM_TEX_SIZE,
++            panel_w, panel_h,
++            video_width, video_height,
++            color_shadow, IGM_TEX_RADIUS, sf,
++            igm.panel_tex, &mymat);
++
++      /* Background */
++      gfx_display_draw_texture_slice(p_disp, userdata,
++            video_width, video_height,
++            panel_x, panel_y,
++            IGM_TEX_SIZE, IGM_TEX_SIZE,
++            panel_w, panel_h,
++            video_width, video_height,
++            color_panel, IGM_TEX_RADIUS, sf,
++            igm.panel_tex, &mymat);
++
++      if (dispctx && dispctx->blend_end)
++         dispctx->blend_end(userdata);
++   }
 +
 +   /* ── Title ─────────────────────────────────────────── */
 +   if (igm.font_small)
