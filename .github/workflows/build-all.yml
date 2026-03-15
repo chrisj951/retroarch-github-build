@@ -20,3 +20,8 @@ jobs:
     uses: ./.github/workflows/build-a30.yml
     with:
       retroarch_version: ${{ inputs.retroarch_version }}
+
+  miyoomini:
+    uses: ./.github/workflows/build-miyoomini.yml
+    with:
+      retroarch_version: ${{ inputs.retroarch_version }}

@@ -1,0 +1,338 @@
+diff --git a/gfx/video_filters/normal2x.c b/gfx/video_filters/normal2x.c
+index 9f7bf447aa..ed591ec7e7 100644
+--- a/gfx/video_filters/normal2x.c
++++ b/gfx/video_filters/normal2x.c
+@@ -16,6 +16,10 @@
+ 
+ /* Compile: gcc -o normal2x.so -shared normal2x.c -std=c99 -O3 -Wall -pedantic -fPIC */
+ 
++#ifdef MIYOOMINI
++#include "../drivers/miyoomini/scaler_neon.h"
++#endif
++
+ #include "softfilter.h"
+ #include <stdlib.h>
+ #include <string.h>
+@@ -68,17 +72,22 @@ static void *normal2x_generic_create(const struct softfilter_config *config,
+       unsigned threads, softfilter_simd_mask_t simd, void *userdata)
+ {
+    struct filter_data *filt = (struct filter_data*)calloc(1, sizeof(*filt));
+-   if (!filt)
+-      return NULL;
+-   if (!(filt->workers = (struct softfilter_thread_data*)calloc(1, sizeof(struct softfilter_thread_data))))
+-   {
+-      free(filt);
++   (void)simd;
++   (void)config;
++   (void)userdata;
++
++   if (!filt) {
+       return NULL;
+    }
+    /* Apparently the code is not thread-safe,
+     * so force single threaded operation... */
++   filt->workers = (struct softfilter_thread_data*)calloc(1, sizeof(struct softfilter_thread_data));
+    filt->threads = 1;
+    filt->in_fmt  = in_fmt;
++   if (!filt->workers) {
++      free(filt);
++      return NULL;
++   }
+    return filt;
+ }
+ 
+@@ -86,15 +95,16 @@ static void normal2x_generic_output(void *data,
+       unsigned *out_width, unsigned *out_height,
+       unsigned width, unsigned height)
+ {
+-   *out_width  = width << 1;
++   *out_width = width << 1;
+    *out_height = height << 1;
+ }
+ 
+ static void normal2x_generic_destroy(void *data)
+ {
+    struct filter_data *filt = (struct filter_data*)data;
+-   if (!filt)
++   if (!filt) {
+       return;
++   }
+    free(filt->workers);
+    free(filt);
+ }
+@@ -102,6 +112,9 @@ static void normal2x_generic_destroy(void *data)
+ static void normal2x_work_cb_xrgb8888(void *data, void *thread_data)
+ {
+    struct softfilter_thread_data *thr = (struct softfilter_thread_data*)thread_data;
++#ifdef MIYOOMINI
++   scale2x2_n32((void*)thr->in_data, thr->out_data, thr->width, thr->height, thr->in_pitch, thr->out_pitch);
++#else
+    const uint32_t *input              = (const uint32_t*)thr->in_data;
+    uint32_t *output                   = (uint32_t*)thr->out_data;
+    uint32_t in_stride                 = (uint32_t)(thr->in_pitch >> 2);
+@@ -113,16 +126,16 @@ static void normal2x_work_cb_xrgb8888(void *data, void *thread_data)
+       uint32_t *out_ptr = output;
+       for (x = 0; x < thr->width; ++x)
+       {
+-         uint32_t row_color[2];
+          uint32_t *out_line_ptr = out_ptr;
+          uint32_t color         = *(input + x);
++         uint32_t row_color[2];
+ 
+-         row_color[0]           = color;
+-         row_color[1]           = color;
++         row_color[0] = color;
++         row_color[1] = color;
+ 
+          /* Row 1 */
+          memcpy(out_line_ptr, row_color, sizeof(row_color));
+-         out_line_ptr          += out_stride;
++         out_line_ptr += out_stride;
+ 
+          /* Row 2 */
+          memcpy(out_line_ptr, row_color, sizeof(row_color));
+@@ -133,11 +146,15 @@ static void normal2x_work_cb_xrgb8888(void *data, void *thread_data)
+       input  += in_stride;
+       output += out_stride << 1;
+    }
++#endif
+ }
+ 
+ static void normal2x_work_cb_rgb565(void *data, void *thread_data)
+ {
+    struct softfilter_thread_data *thr = (struct softfilter_thread_data*)thread_data;
++#ifdef MIYOOMINI
++   scale2x2_n16((void*)thr->in_data, thr->out_data, thr->width, thr->height, thr->in_pitch, thr->out_pitch);
++#else
+    const uint16_t *input              = (const uint16_t*)thr->in_data;
+    uint16_t *output                   = (uint16_t*)thr->out_data;
+    uint16_t in_stride                 = (uint16_t)(thr->in_pitch >> 1);
+@@ -149,26 +166,27 @@ static void normal2x_work_cb_rgb565(void *data, void *thread_data)
+       uint16_t *out_ptr = output;
+       for (x = 0; x < thr->width; ++x)
+       {
+-         uint16_t row_color[2];
+          uint16_t *out_line_ptr = out_ptr;
+          uint16_t color         = *(input + x);
++         uint16_t row_color[2];
+ 
+-         row_color[0]           = color;
+-         row_color[1]           = color;
++         row_color[0] = color;
++         row_color[1] = color;
+ 
+          /* Row 1 */
+          memcpy(out_line_ptr, row_color, sizeof(row_color));
+-         out_line_ptr          += out_stride;
++         out_line_ptr += out_stride;
+ 
+          /* Row 2 */
+          memcpy(out_line_ptr, row_color, sizeof(row_color));
+ 
+-         out_ptr               += 2;
++         out_ptr += 2;
+       }
+ 
+-      input                    += in_stride;
+-      output                   += out_stride << 1;
++      input  += in_stride;
++      output += out_stride << 1;
+    }
++#endif
+ }
+ 
+ static void normal2x_generic_packets(void *data,
+@@ -181,21 +199,22 @@ static void normal2x_generic_packets(void *data,
+     * over threads and can cull some code. This only
+     * makes the tiniest performance difference, but
+     * every little helps when running on an o3DS... */
+-   struct filter_data *filt           = (struct filter_data*)data;
++   struct filter_data *filt = (struct filter_data*)data;
+    struct softfilter_thread_data *thr = (struct softfilter_thread_data*)&filt->workers[0];
+ 
+-   thr->out_data                      = (uint8_t*)output;
+-   thr->in_data                       = (const uint8_t*)input;
+-   thr->out_pitch                     = output_stride;
+-   thr->in_pitch                      = input_stride;
+-   thr->width                         = width;
+-   thr->height                        = height;
+-
+-   if (filt->in_fmt == SOFTFILTER_FMT_XRGB8888)
+-      packets[0].work                 = normal2x_work_cb_xrgb8888;
+-   else if (filt->in_fmt == SOFTFILTER_FMT_RGB565)
+-      packets[0].work                 = normal2x_work_cb_rgb565;
+-   packets[0].thread_data             = thr;
++   thr->out_data = (uint8_t*)output;
++   thr->in_data = (const uint8_t*)input;
++   thr->out_pitch = output_stride;
++   thr->in_pitch = input_stride;
++   thr->width = width;
++   thr->height = height;
++
++   if (filt->in_fmt == SOFTFILTER_FMT_XRGB8888) {
++      packets[0].work = normal2x_work_cb_xrgb8888;
++   } else if (filt->in_fmt == SOFTFILTER_FMT_RGB565) {
++      packets[0].work = normal2x_work_cb_rgb565;
++   }
++   packets[0].thread_data = thr;
+ }
+ 
+ static const struct softfilter_implementation normal2x_generic = {
+@@ -217,6 +236,7 @@ static const struct softfilter_implementation normal2x_generic = {
+ const struct softfilter_implementation *softfilter_get_implementation(
+       softfilter_simd_mask_t simd)
+ {
++   (void)simd;
+    return &normal2x_generic;
+ }
+ 
+diff --git a/gfx/video_filters/normal4x.c b/gfx/video_filters/normal4x.c
+index c0af01478e..1137d3e9a4 100644
+--- a/gfx/video_filters/normal4x.c
++++ b/gfx/video_filters/normal4x.c
+@@ -16,6 +16,10 @@
+ 
+ /* Compile: gcc -o normal4x.so -shared normal4x.c -std=c99 -O3 -Wall -pedantic -fPIC */
+ 
++#ifdef MIYOOMINI
++#include "../drivers/miyoomini/scaler_neon.h"
++#endif
++
+ #include "softfilter.h"
+ #include <stdlib.h>
+ #include <string.h>
+@@ -68,17 +72,22 @@ static void *normal4x_generic_create(const struct softfilter_config *config,
+       unsigned threads, softfilter_simd_mask_t simd, void *userdata)
+ {
+    struct filter_data *filt = (struct filter_data*)calloc(1, sizeof(*filt));
+-   if (!filt)
+-      return NULL;
+-   if (!(filt->workers = (struct softfilter_thread_data*)calloc(1, sizeof(struct softfilter_thread_data))))
+-   {
+-      free(filt);
++   (void)simd;
++   (void)config;
++   (void)userdata;
++
++   if (!filt) {
+       return NULL;
+    }
+    /* Apparently the code is not thread-safe,
+     * so force single threaded operation... */
++   filt->workers = (struct softfilter_thread_data*)calloc(1, sizeof(struct softfilter_thread_data));
+    filt->threads = 1;
+    filt->in_fmt  = in_fmt;
++   if (!filt->workers) {
++      free(filt);
++      return NULL;
++   }
+    return filt;
+ }
+ 
+@@ -86,15 +95,16 @@ static void normal4x_generic_output(void *data,
+       unsigned *out_width, unsigned *out_height,
+       unsigned width, unsigned height)
+ {
+-   *out_width  = width << 2;
++   *out_width = width << 2;
+    *out_height = height << 2;
+ }
+ 
+ static void normal4x_generic_destroy(void *data)
+ {
+    struct filter_data *filt = (struct filter_data*)data;
+-   if (!filt)
++   if (!filt) {
+       return;
++   }
+    free(filt->workers);
+    free(filt);
+ }
+@@ -102,6 +112,9 @@ static void normal4x_generic_destroy(void *data)
+ static void normal4x_work_cb_xrgb8888(void *data, void *thread_data)
+ {
+    struct softfilter_thread_data *thr = (struct softfilter_thread_data*)thread_data;
++#ifdef MIYOOMINI
++   scale4x4_n32((void*)thr->in_data, thr->out_data, thr->width, thr->height, thr->in_pitch, thr->out_pitch);
++#else
+    const uint32_t *input              = (const uint32_t*)thr->in_data;
+    uint32_t *output                   = (uint32_t*)thr->out_data;
+    uint32_t in_stride                 = (uint32_t)(thr->in_pitch >> 2);
+@@ -143,11 +156,15 @@ static void normal4x_work_cb_xrgb8888(void *data, void *thread_data)
+       input  += in_stride;
+       output += out_stride << 2;
+    }
++#endif
+ }
+ 
+ static void normal4x_work_cb_rgb565(void *data, void *thread_data)
+ {
+    struct softfilter_thread_data *thr = (struct softfilter_thread_data*)thread_data;
++#ifdef MIYOOMINI
++   scale4x4_n16((void*)thr->in_data, thr->out_data, thr->width, thr->height, thr->in_pitch, thr->out_pitch);
++#else
+    const uint16_t *input              = (const uint16_t*)thr->in_data;
+    uint16_t *output                   = (uint16_t*)thr->out_data;
+    uint16_t in_stride                 = (uint16_t)(thr->in_pitch >> 1);
+@@ -159,9 +176,9 @@ static void normal4x_work_cb_rgb565(void *data, void *thread_data)
+       uint16_t *out_ptr = output;
+       for (x = 0; x < thr->width; ++x)
+       {
+-         uint16_t row_color[4];
+          uint16_t *out_line_ptr = out_ptr;
+          uint16_t color         = *(input + x);
++         uint16_t row_color[4];
+ 
+          row_color[0] = color;
+          row_color[1] = color;
+@@ -189,6 +206,7 @@ static void normal4x_work_cb_rgb565(void *data, void *thread_data)
+       input  += in_stride;
+       output += out_stride << 2;
+    }
++#endif
+ }
+ 
+ static void normal4x_generic_packets(void *data,
+@@ -201,21 +219,22 @@ static void normal4x_generic_packets(void *data,
+     * over threads and can cull some code. This only
+     * makes the tiniest performance difference, but
+     * every little helps when running on an o3DS... */
+-   struct filter_data *filt           = (struct filter_data*)data;
++   struct filter_data *filt = (struct filter_data*)data;
+    struct softfilter_thread_data *thr = (struct softfilter_thread_data*)&filt->workers[0];
+ 
+-   thr->out_data                      = (uint8_t*)output;
+-   thr->in_data                       = (const uint8_t*)input;
+-   thr->out_pitch                     = output_stride;
+-   thr->in_pitch                      = input_stride;
+-   thr->width                         = width;
+-   thr->height                        = height;
+-
+-   if (filt->in_fmt == SOFTFILTER_FMT_XRGB8888)
+-      packets[0].work                 = normal4x_work_cb_xrgb8888;
+-   else if (filt->in_fmt == SOFTFILTER_FMT_RGB565)
+-      packets[0].work                 = normal4x_work_cb_rgb565;
+-   packets[0].thread_data             = thr;
++   thr->out_data = (uint8_t*)output;
++   thr->in_data = (const uint8_t*)input;
++   thr->out_pitch = output_stride;
++   thr->in_pitch = input_stride;
++   thr->width = width;
++   thr->height = height;
++
++   if (filt->in_fmt == SOFTFILTER_FMT_XRGB8888) {
++      packets[0].work = normal4x_work_cb_xrgb8888;
++   } else if (filt->in_fmt == SOFTFILTER_FMT_RGB565) {
++      packets[0].work = normal4x_work_cb_rgb565;
++   }
++   packets[0].thread_data = thr;
+ }
+ 
+ static const struct softfilter_implementation normal4x_generic = {
+@@ -237,6 +256,7 @@ static const struct softfilter_implementation normal4x_generic = {
+ const struct softfilter_implementation *softfilter_get_implementation(
+       softfilter_simd_mask_t simd)
+ {
++   (void)simd;
+    return &normal4x_generic;
+ }

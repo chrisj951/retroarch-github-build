@@ -1,0 +1,281 @@
+diff --git a/audio/drivers/audioio.c b/audio/drivers/audioio.c
+index 8176a0d7b4..0e21b56c74 100644
+--- a/audio/drivers/audioio.c
++++ b/audio/drivers/audioio.c
+@@ -13,6 +13,10 @@
+  *  You should have received a copy of the GNU General Public License along with RetroArch.
+  *  If not, see <http://www.gnu.org/licenses/>.
+  */
++#if defined(MIYOOMINI)
++#include "audioio_miyoomini.c"
++#else
++
+ #include <stdio.h>
+ #include <stdint.h>
+ #include <stdlib.h>
+@@ -210,3 +214,4 @@ audio_driver_t audio_audioio = {
+    audioio_write_avail,
+    audioio_buffer_size,
+ };
++#endif
+diff --git a/audio/drivers/oss.c b/audio/drivers/oss.c
+index 52b525ac34..da2f2e1a78 100644
+--- a/audio/drivers/oss.c
++++ b/audio/drivers/oss.c
+@@ -13,6 +13,10 @@
+  *  You should have received a copy of the GNU General Public License along with RetroArch.
+  *  If not, see <http://www.gnu.org/licenses/>.
+  */
++#if defined(MIYOOMINI)
++#include "oss_miyoomini.c"
++#else
++
+ #include <stdio.h>
+ #include <stdint.h>
+ #include <stdlib.h>
+@@ -228,3 +232,4 @@ audio_driver_t audio_oss = {
+    oss_write_avail,
+    oss_buffer_size,
+ };
++#endif
+diff --git a/audio/drivers/sdl_audio.c b/audio/drivers/sdl_audio.c
+index 56554083f5..1ac734992a 100644
+--- a/audio/drivers/sdl_audio.c
++++ b/audio/drivers/sdl_audio.c
+@@ -13,6 +13,9 @@
+  *  You should have received a copy of the GNU General Public License along with RetroArch.
+  *  If not, see <http://www.gnu.org/licenses/>.
+  */
++#if defined(MIYOOMINI)
++#include "sdl_audio_miyoomini.c"
++#else
+ 
+ #include <stdint.h>
+ #include <stddef.h>
+@@ -276,3 +279,4 @@ audio_driver_t audio_sdl = {
+    sdl_audio_write_avail,
+    NULL
+ };
++#endif
+diff --git a/dingux/dingux_utils.c b/dingux/dingux_utils.c
+index b50b9c566a..fb4d8fc45e 100644
+--- a/dingux/dingux_utils.c
++++ b/dingux/dingux_utils.c
+@@ -22,6 +22,13 @@
+ #if defined(RS90)
+ #include <lists/dir_list.h>
+ #endif
++#if defined(MIYOOMINI)
++#include <fcntl.h>
++#include <linux/i2c-dev.h>
++#include <linux/i2c.h>
++#include <sys/ioctl.h>
++#include <unistd.h>
++#endif
+ 
+ #include <stdlib.h>
+ 
+@@ -373,6 +380,70 @@ int dingux_get_battery_level(void)
+       return -1;
+ 
+    return (int)(((voltage_now - voltage_min) * 100) / (voltage_max - voltage_min));
++#elif defined(MIYOOMINI)
++   // for miyoomini plus
++#define AXPDEV "/dev/i2c-1"
++#define AXPID (0x34)
++   static uint32_t mmplus = 2;
++
++   if (mmplus) {
++      int axp_fd = open(AXPDEV, O_RDWR);
++      if (axp_fd >= 0) {
++         struct i2c_msg msg[2];
++         struct i2c_rdwr_ioctl_data packets;
++         unsigned char address = 0xB9;
++         unsigned char val;
++         if (mmplus == 2) {
++         ioctl(axp_fd, I2C_TIMEOUT, 5);
++         ioctl(axp_fd, I2C_RETRIES, 1);
++         mmplus = 1;
++         }
++         msg[0].addr = AXPID;
++         msg[0].flags = 0;
++         msg[0].len = 1;
++         msg[0].buf = &address;
++         msg[1].addr = AXPID;
++         msg[1].flags = I2C_M_RD;
++         msg[1].len = 1;
++         msg[1].buf = &val;
++         packets.nmsgs = 2;
++         packets.msgs = &msg[0];
++         int ret = ioctl(axp_fd, I2C_RDWR, &packets);
++         close(axp_fd);
++         if (ret < 0)
++         mmplus = 0;
++         else
++         return (val & 0x7f);
++      }
++   }
++   // for miyoomini
++   int percBat = 0;
++   typedef struct {
++      int channel_value;
++      int adc_value;
++   } SAR_ADC_CONFIG_READ;
++#define SARADC_IOC_MAGIC 'a'
++#define IOCTL_SAR_INIT _IO(SARADC_IOC_MAGIC, 0)
++#define IOCTL_SAR_SET_CHANNEL_READ_VALUE _IO(SARADC_IOC_MAGIC, 1)
++   static SAR_ADC_CONFIG_READ adcCfg = {0, 0};
++   static int sar_fd = 0;
++   if (!sar_fd) {
++      sar_fd = open("/dev/sar", O_WRONLY);
++      ioctl(sar_fd, IOCTL_SAR_INIT, NULL);
++   }
++   ioctl(sar_fd, IOCTL_SAR_SET_CHANNEL_READ_VALUE, &adcCfg);
++   if (adcCfg.adc_value >= 528) {
++      percBat = adcCfg.adc_value - 478;
++   } else if ((adcCfg.adc_value >= 512) && (adcCfg.adc_value < 528)) {
++      percBat = (int)(adcCfg.adc_value * 2.125 - 1068);
++   } else if ((adcCfg.adc_value >= 480) && (adcCfg.adc_value < 512)) {
++      percBat = (int)(adcCfg.adc_value * 0.51613 - 243.742);
++   }
++   if (percBat > 100) {
++      percBat = 100;
++   }
++
++   return percBat;
+ #elif defined(MIYOO)
+    /* miyoo-battery only provides "voltage_now". Results are based on
+     * value distribution while running a game at max load. */
+diff --git a/gfx/drivers/sdl_dingux_gfx.c b/gfx/drivers/sdl_dingux_gfx.c
+index 5b710e887d..bf0fff79df 100644
+--- a/gfx/drivers/sdl_dingux_gfx.c
++++ b/gfx/drivers/sdl_dingux_gfx.c
+@@ -15,6 +15,9 @@
+  *  You should have received a copy of the GNU General Public License along with RetroArch.
+  *  If not, see <http://www.gnu.org/licenses/>.
+  */
++#if defined(MIYOOMINI)
++#include "miyoomini/sdl_miyoomini_gfx.c"
++#else
+ 
+ #include <stdlib.h>
+ #include <string.h>
+@@ -1143,3 +1146,4 @@ video_driver_t video_sdl_dingux = {
+ #endif
+    sdl_dingux_get_poke_interface
+ };
++#endif
+diff --git a/gfx/video_filter.c b/gfx/video_filter.c
+index 092a5d2a81..ea16e7a5f1 100644
+--- a/gfx/video_filter.c
++++ b/gfx/video_filter.c
+@@ -347,16 +347,19 @@ static bool append_softfilter_plugs(rarch_softfilter_t *filt,
+       if (!filt->plugs[i].impl)
+          return false;
+    }
+-
++ #if !defined(HAVE_DYLIB)
+    return true;
+ }
+-#elif defined(HAVE_DYLIB)
++ #endif
++#endif
++#if defined(HAVE_DYLIB)
++ #if !defined(HAVE_FILTERS_BUILTIN)
+ static bool append_softfilter_plugs(rarch_softfilter_t *filt,
+       struct string_list *list)
+ {
+    unsigned i;
+    softfilter_simd_mask_t mask = (softfilter_simd_mask_t)cpu_features_get();
+-
++ #endif
+    for (i = 0; i < list->size; i++)
+    {
+       softfilter_get_implementation_t cb;
+@@ -409,7 +412,7 @@ static bool append_softfilter_plugs(rarch_softfilter_t *filt,
+ 
+    return true;
+ }
+-#else
++#elif !defined(HAVE_FILTERS_BUILTIN)
+ static bool append_softfilter_plugs(rarch_softfilter_t *filt,
+       struct string_list *list)
+ {
+diff --git a/input/drivers_joypad/sdl_dingux_joypad.c b/input/drivers_joypad/sdl_dingux_joypad.c
+index 543fe5b630..4a0e4ffd78 100644
+--- a/input/drivers_joypad/sdl_dingux_joypad.c
++++ b/input/drivers_joypad/sdl_dingux_joypad.c
+@@ -13,6 +13,9 @@
+  *  You should have received a copy of the GNU General Public License along with RetroArch.
+  *  If not, see <http://www.gnu.org/licenses/>.
+  */
++#if defined(MIYOOMINI)
++#include "sdl_miyoomini_joypad.c"
++#else
+ 
+ #include <stdint.h>
+ #include <stdlib.h>
+@@ -811,3 +814,4 @@ input_device_driver_t sdl_dingux_joypad = {
+    sdl_dingux_joypad_name,
+    "sdl_dingux",
+ };
++#endif
+diff --git a/libretro-common/audio/conversion/float_to_s16.c b/libretro-common/audio/conversion/float_to_s16.c
+index 5f2ab2405a..35f01e7dae 100644
+--- a/libretro-common/audio/conversion/float_to_s16.c
++++ b/libretro-common/audio/conversion/float_to_s16.c
+@@ -32,11 +32,10 @@
+ #include <audio/conversion/float_to_s16.h>
+
+ #if (defined(__ARM_NEON__) || defined(HAVE_NEON))
++#include <arm_neon.h>
+ static bool float_to_s16_neon_enabled = false;
+ #ifdef HAVE_ARM_NEON_ASM_OPTIMIZATIONS
+ void convert_float_s16_asm(int16_t *s, const float *in, size_t len);
+-#else
+-#include <arm_neon.h>
+ #endif
+
+ void convert_float_to_s16(int16_t *s, const float *in, size_t len)
+@@ -55,7 +54,7 @@ void convert_float_to_s16(int16_t *s, const float *in, size_t len)
+
+          s        += aligned_samples;
+          in       += aligned_samples;
+-         samples  -= aligned_samples;
++         len      -= aligned_samples;
+          i         = 0;
+ #else
+          int16x4x2_t oreg;
+diff --git a/retroarch.c b/retroarch.c
+index d28825d383..6bb120bd89 100644
+--- a/retroarch.c
++++ b/retroarch.c
+@@ -211,6 +211,10 @@
+ #include "lakka.h"
+ #endif
+ 
++#if defined(MIYOOMINI)
++#include "miyoomini.h"
++#endif
++
+ #define _PSUPP(var, name, desc) printf("  %s:\n\t\t%s: %s\n", name, desc, var ? "yes" : "no")
+ 
+ #define FAIL_CPU(simd_type) do { \
+@@ -3757,6 +3761,9 @@ bool command_event(enum event_command cmd, void *data)
+          return false;
+ #endif
+       case CMD_EVENT_FULLSCREEN_TOGGLE:
++#if defined(MIYOOMINI)
++         miyoo_event_fullscreen_impl(settings);
++#else
+          {
+             audio_driver_state_t
+                *audio_st              = audio_state_get_ptr();
+@@ -3808,6 +3815,7 @@ bool command_event(enum event_command cmd, void *data)
+             if (userdata && *userdata == true)
+                video_driver_cached_frame();
+          }
++#endif
+          break;
+       case CMD_EVENT_DISK_APPEND_IMAGE:
+          {

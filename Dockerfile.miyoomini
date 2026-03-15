@@ -1,0 +1,9 @@
+FROM aemiii91/miyoomini-toolchain:latest
+
+COPY build-miyoomini.sh /build-miyoomini.sh
+RUN chmod +x /build-miyoomini.sh
+COPY patches/ /patches/
+COPY miyoomini_src/ /miyoomini_src/
+
+WORKDIR /build
+ENTRYPOINT ["/build-miyoomini.sh"]

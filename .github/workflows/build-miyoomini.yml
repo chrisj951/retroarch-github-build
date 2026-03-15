@@ -1,0 +1,52 @@
+name: Build RA32.mini
+
+on:
+  workflow_dispatch:
+    inputs:
+      retroarch_version:
+        description: 'RetroArch version tag'
+        default: 'v1.22.2'
+  workflow_call:
+    inputs:
+      retroarch_version:
+        type: string
+        default: 'v1.22.2'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create beta release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="beta-miyoomini"
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" \
+            --target "${{ github.ref_name }}" \
+            --title "Beta - RA32.mini" \
+            --notes "RetroArch ${{ github.event.inputs.retroarch_version || 'v1.22.2' }} for Miyoo Mini family" \
+            --prerelease
+
+      - name: Build Docker image
+        run: docker build -f Dockerfile.miyoomini -t ra-builder-miyoomini .
+
+      - name: Build RetroArch
+        run: |
+          mkdir -p output
+          docker run --rm \
+            -e RETROARCH_VERSION=${{ github.event.inputs.retroarch_version || 'v1.22.2' }} \
+            -v ${{ github.workspace }}/output:/output \
+            ra-builder-miyoomini
+
+      - name: Upload binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv output/retroarch output/RA32.mini
+          gh release upload "beta-miyoomini" output/RA32.mini --clobber

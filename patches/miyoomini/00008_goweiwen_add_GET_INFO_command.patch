@@ -1,0 +1,65 @@
+From 4aeaaf389a9d9323819236cc4fb5990995dad0cd Mon Sep 17 00:00:00 2001
+From: Goh Wei Wen <goweiwen@gmail.com>
+Date: Mon, 17 Jul 2023 00:23:35 +0800
+Subject: [PATCH] feat: add GET_INFO command
+
+---
+ command.c | 24 ++++++++++++++++++++++++
+ command.h |  2 ++
+ 2 files changed, 26 insertions(+)
+
+diff --git a/command.c b/command.c
+index 38f0f954de1..e9facea0412 100644
+--- a/command.c
++++ b/command.c
+@@ -681,6 +681,30 @@ bool command_show_osd_msg(command_t *cmd, const char* arg)
+     return true;
+ }
+ 
++bool command_get_info(command_t *cmd, const char *arg)
++{
++   char reply[128]              = "";
++
++   runloop_state_t *runloop_st = runloop_state_get_ptr();
++   rarch_system_info_t *sys_info = runloop_st ? (rarch_system_info_t*)&runloop_st->system : NULL;
++   if (!sys_info) return false;
++
++   unsigned int disk_count = disk_control_get_num_images(&sys_info->disk_control);
++   unsigned int disk_slot = disk_control_get_image_index(&sys_info->disk_control);
++
++   bool savestates_enabled      = core_info_current_supports_savestate();
++   if (savestates_enabled) {
++      unsigned int state_slot = runloop_get_current_savestate();
++      snprintf(reply, sizeof(reply) - 1, "GET_INFO %d %d %d", disk_count, disk_slot, state_slot);
++   } else {
++      snprintf(reply, sizeof(reply) - 1, "GET_INFO %d %d NO", disk_count, disk_slot);
++   }
++
++   cmd->replier(cmd, reply, strlen(reply));
++   return true;
++
++}
++
+ bool command_get_disk_count(command_t *cmd, const char *arg)
+ {
+    char reply[128]              = "";
+diff --git a/command.h b/command.h
+index 416f98062f6..1c57a064f8e 100644
+--- a/command.h
++++ b/command.h
+@@ -408,6 +408,7 @@ bool command_version(command_t *cmd, const char* arg);
+ bool command_get_status(command_t *cmd, const char* arg);
+ bool command_get_config_param(command_t *cmd, const char* arg);
+ bool command_show_osd_msg(command_t *cmd, const char* arg);
++bool command_get_info(command_t *cmd, const char* arg);
+ bool command_get_disk_count(command_t *cmd, const char *arg);
+ bool command_get_disk_slot(command_t *cmd, const char *arg);
+ bool command_set_disk_slot(command_t *cmd, const char *arg);
+@@ -447,6 +448,7 @@ static const struct cmd_action_map action_map[] = {
+    { "READ_CORE_MEMORY", command_read_memory,      "<address> <number of bytes>" },
+    { "WRITE_CORE_MEMORY",command_write_memory,     "<address> <byte1> <byte2> ..." },
+ 
++   { "GET_INFO",         command_get_info,         "No argument" },
+    { "GET_DISK_COUNT",   command_get_disk_count,   "No argument" },
+    { "GET_DISK_SLOT",    command_get_disk_slot,    "No argument" },
+    { "SET_DISK_SLOT",    command_set_disk_slot,    "<disc number>" },

@@ -1,0 +1,73 @@
+diff --git a/command.c b/command.c
+--- a/command.c
++++ b/command.c
+@@ -947,6 +947,50 @@ bool command_get_status(command_t *cmd, const char* arg)
+    return true;
+ }
+ 
++bool command_get_path(command_t *cmd, const char* arg)
++{
++   size_t _len;
++   char reply[4096];
++   char state_path[16384];
++
++   const char *value = NULL;
++
++   if (string_is_equal(arg, "core"))
++      value = path_get(RARCH_PATH_CORE);
++   else if (string_is_equal(arg, "config"))
++      value = path_get(RARCH_PATH_CONFIG);
++   else if (string_is_equal(arg, "content"))
++      value = path_get(RARCH_PATH_CONTENT);
++   else if (string_is_equal(arg, "config_append"))
++      value = path_get(RARCH_PATH_CONFIG_APPEND);
++   else if (string_is_equal(arg, "config_override"))
++      value = path_get(RARCH_PATH_CONFIG_OVERRIDE);
++   else if (string_is_equal(arg, "core_options"))
++      value = path_get(RARCH_PATH_CORE_OPTIONS);
++   else if (string_is_equal(arg, "default_shader_preset"))
++      value = path_get(RARCH_PATH_DEFAULT_SHADER_PRESET);
++   else if (string_is_equal(arg, "basename"))
++      value = path_get(RARCH_PATH_BASENAME);
++   else if (string_is_equal(arg, "subsystem"))
++      value = path_get(RARCH_PATH_SUBSYSTEM);
++   else if (string_is_equal(arg, "savestate")) {
++      runloop_get_current_savestate_path(state_path, sizeof(state_path));
++      value = state_path;
++   }
++
++   _len  = strlcpy(reply, "GET_PATH ", sizeof(reply));
++   _len += strlcpy(reply + _len, arg, sizeof(reply)  - _len);
++   reply[  _len] = ' ';
++   reply[++_len] = '\0';
++
++   if (value)
++      _len += strlcpy(reply + _len, value, sizeof(reply) - _len);
++
++   cmd->replier(cmd, reply, _len);
++
++   return true;
++}
++
+ bool command_read_memory(command_t *cmd, const char *arg)
+ {
+    unsigned i;
+diff --git a/command.h b/command.h
+--- a/command.h
++++ b/command.h
+@@ -416,6 +416,7 @@ struct cmd_action_map
+ bool command_version(command_t *cmd, const char* arg);
+ bool command_get_status(command_t *cmd, const char* arg);
+ bool command_get_config_param(command_t *cmd, const char* arg);
++bool command_get_path(command_t *cmd, const char* arg);
+ bool command_show_osd_msg(command_t *cmd, const char* arg);
+ bool command_load_state_slot(command_t *cmd, const char* arg);
+ bool command_play_replay_slot(command_t *cmd, const char* arg);
+@@ -433,6 +434,7 @@ static const struct cmd_action_map action_map[] = {
+    { "VERSION",          command_version,          "No argument"},
+    { "GET_STATUS",       command_get_status,       "No argument" },
+    { "GET_CONFIG_PARAM", command_get_config_param, "<param name>" },
++   { "GET_PATH",         command_get_path,         "<path type>" },
+    { "SHOW_MSG",         command_show_osd_msg,     "No argument" },
+ #if defined(HAVE_CHEEVOS)
+    /* These functions use achievement addresses and only work if a game with achievements is
