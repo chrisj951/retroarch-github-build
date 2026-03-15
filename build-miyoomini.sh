@@ -14,12 +14,16 @@ fi
 
 cd RetroArch
 
+# Fix line endings before patching (upstream has mixed CRLF/LF)
+find . -type f \( -name '*.c' -o -name '*.h' \) -exec sed -i 's/\r$//' {} +
+
 # Apply miyoomini-specific patches only (common patches require GFX_WIDGETS/GPU)
+# Uses patch(1) instead of git apply for fuzz tolerance
 for dir in /patches/miyoomini; do
     if [ -d "$dir" ] && ls "$dir"/*.patch 1>/dev/null 2>&1; then
         for patch in "$dir"/*.patch; do
             echo "Applying: $(basename "$patch")"
-            git apply "$patch"
+            patch -p1 < "$patch"
         done
     fi
 done
