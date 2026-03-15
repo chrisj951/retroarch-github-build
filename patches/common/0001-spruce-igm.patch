@@ -194,6 +194,7 @@ index 0000000..0000000
 +/* RRGGBBAA format for gfx_display_draw_text */
 +#define TEXT_COLOR_NORMAL   0xA89984FFu   /* muted warm gray */
 +#define TEXT_COLOR_SELECTED 0xD5C4A1FFu   /* warm cream      */
++#define TEXT_COLOR_TITLE    0x689D6AFFu   /* spruce green    */
 +#define TEXT_COLOR_SHADOW   0x000000C0u   /* black, 75%      */
 +
 +#define IGM_NO_PENDING      -1
@@ -537,7 +538,7 @@ index 0000000..0000000
 +            (float)text_cx,
 +            (float)(panel_y + title_h * 0.68f),
 +            video_width, video_height,
-+            TEXT_COLOR_NORMAL, TEXT_ALIGN_CENTER);
++            TEXT_COLOR_TITLE, TEXT_ALIGN_CENTER);
 +
 +   /* Thin line under title */
 +   gfx_display_draw_quad(p_disp, userdata,
