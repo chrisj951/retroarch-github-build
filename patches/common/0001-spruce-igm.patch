@@ -129,7 +129,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,528 @@
+@@ -0,0 +1,529 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
