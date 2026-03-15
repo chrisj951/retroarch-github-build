@@ -192,7 +192,7 @@ index 0000000..0000000
 +static float color_title_line[16] = COLOR_HEX_TO_FLOAT(0x665C54, 0.40f);
 +
 +/* RRGGBBAA format for gfx_display_draw_text */
-+#define TEXT_COLOR_NORMAL   0xA89984FFu   /* muted warm gray */
++#define TEXT_COLOR_NORMAL   0xBDAD91FFu   /* warm gray       */
 +#define TEXT_COLOR_SELECTED 0xD5C4A1FFu   /* warm cream      */
 +#define TEXT_COLOR_TITLE    0x689D6AFFu   /* spruce green    */
 +#define TEXT_COLOR_SHADOW   0x000000C0u   /* black, 75%      */
