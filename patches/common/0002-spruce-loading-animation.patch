@@ -148,7 +148,7 @@ index 0000000..0000000
 +
 +bool spruce_loading_is_active(void)
 +{
-+   return sl.active;
++   return !sl.initialized || sl.active;
 +}
 +
 +void spruce_loading_frame(
