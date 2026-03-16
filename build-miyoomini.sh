@@ -17,15 +17,15 @@ cd RetroArch
 # Fix line endings before patching (upstream has mixed CRLF/LF)
 find . -type f \( -name '*.c' -o -name '*.h' \) -exec sed -i 's/\r$//' {} +
 
-# Apply miyoomini-specific patches only (common patches require GFX_WIDGETS/GPU)
-# Uses patch(1) instead of git apply for fuzz tolerance
-for dir in /patches/miyoomini; do
-    if [ -d "$dir" ] && ls "$dir"/*.patch 1>/dev/null 2>&1; then
-        for patch in "$dir"/*.patch; do
-            echo "Applying: $(basename "$patch")"
-            patch -p1 < "$patch"
-        done
-    fi
+# Apply miyoomini-specific patches
+# OnionUI patches (000xx) use patch(1) for fuzz tolerance
+# Spruce patches (001xx) use git apply for strict format
+for p in /patches/miyoomini/*.patch; do
+    echo "Applying: $(basename "$p")"
+    case "$(basename "$p")" in
+        000*) patch -p1 < "$p" ;;
+        *)    git apply "$p" ;;
+    esac
 done
 
 # Copy miyoomini custom source files on top of the patched tree
