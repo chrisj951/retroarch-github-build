@@ -10,31 +10,40 @@
  #ifdef HAVE_CHEATS
  #include "cheat_manager.h"
  #endif
-@@ -6007,6 +6010,17 @@
+@@ -6007,15 +6010,26 @@
+
        if (pressed && !old_pressed)
        {
+-         bool core_is_running    = runloop_st->flags & RUNLOOP_FLAG_CORE_RUNNING;
+-
+-         if (menu_st->flags & MENU_ST_FLAG_ALIVE)
 +#ifdef HAVE_SPRUCE_IGM_SW
 +         /* Spruce IGM (software) intercepts menu toggle when enabled */
 +         if (spruce_igm_sw_is_enabled()
 +               && !(menu_st->flags & MENU_ST_FLAG_ALIVE))
-+         {
+          {
+-            if (rarch_is_initialized && !core_type_is_dummy && core_is_running)
+-               retroarch_menu_running_finished(false);
 +            spruce_igm_sw_toggle();
-+         }
-+         else
-+#endif
-+         {
-          bool core_is_running    = runloop_st->flags & RUNLOOP_FLAG_CORE_RUNNING;
-
-          if (menu_st->flags & MENU_ST_FLAG_ALIVE)
-@@ -6016,6 +6030,7 @@
           }
           else
-             retroarch_menu_running();
+-            retroarch_menu_running();
++#endif
++         {
++            bool core_is_running    = runloop_st->flags & RUNLOOP_FLAG_CORE_RUNNING;
++
++            if (menu_st->flags & MENU_ST_FLAG_ALIVE)
++            {
++               if (rarch_is_initialized && !core_type_is_dummy && core_is_running)
++                  retroarch_menu_running_finished(false);
++            }
++            else
++               retroarch_menu_running();
 +         }
        }
        /* Initial menu toggle on startup */
        else if (core_type_is_dummy && !(menu_st->flags & MENU_ST_FLAG_ALIVE))
-@@ -7321,6 +7336,11 @@
+@@ -7321,6 +7335,11 @@
  #endif
           video_driver_cached_frame();
 +#ifdef HAVE_SPRUCE_IGM_SW
