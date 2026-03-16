@@ -43,7 +43,7 @@ export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig
     --disable-jack \
     --disable-oss \
     --disable-discord \
-    --disable-udev \
+    --enable-udev \
     --enable-opengles \
     --enable-opengles3 \
     --enable-egl \
