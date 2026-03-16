@@ -104,6 +104,9 @@ struct sdl_miyoomini_video
    uint32_t font_colour32;
    SDL_Surface *menuscreen;
    SDL_Surface *menuscreen_rgui;
+#ifdef HAVE_SPRUCE_IGM_SW
+   SDL_Surface *igm_surface;
+#endif
 #ifdef HAVE_OVERLAY
    SDL_Surface *overlay_surface;
 #endif
@@ -625,6 +628,9 @@ static void sdl_miyoomini_gfx_free(void *data) {
    if (vid->screen) GFX_FreeSurface(vid->screen);
    if (vid->menuscreen) GFX_FreeSurface(vid->menuscreen);
    if (vid->menuscreen_rgui) GFX_FreeSurface(vid->menuscreen_rgui);
+#ifdef HAVE_SPRUCE_IGM_SW
+   if (vid->igm_surface) GFX_FreeSurface(vid->igm_surface);
+#endif
 #ifdef HAVE_OVERLAY
    if (vid->overlay_surface) { GFX_SetupOverlaySurface(NULL); GFX_FreeSurface(vid->overlay_surface); }
 #endif
@@ -839,6 +845,10 @@ static void *sdl_miyoomini_gfx_init(const video_info_t *video,
          0, res_x, res_y, 16, 0, 0, 0, 0);
    vid->menuscreen_rgui = GFX_CreateRGBSurface(
          0, RGUI_MENU_WIDTH, RGUI_MENU_HEIGHT, 16, 0, 0, 0, 0);
+#ifdef HAVE_SPRUCE_IGM_SW
+   vid->igm_surface = GFX_CreateRGBSurface(
+         0, res_x, res_y, 32, 0, 0, 0, 0);
+#endif
 
    if (!vid->menuscreen||!vid->menuscreen_rgui) {
       RARCH_ERR("[MI_GFX]: Failed to init GFX surface\n");
@@ -905,16 +915,17 @@ static bool sdl_miyoomini_gfx_frame(void *data, const void *frame,
    if (unlikely(runloop_st->flags & RUNLOOP_FLAG_PAUSED))
    {
 #ifdef HAVE_SPRUCE_IGM_SW
-      if (spruce_igm_sw_is_active())
+      if (spruce_igm_sw_is_active() && vid->igm_surface)
       {
          uint32_t *front = (uint32_t*)((uint8_t*)fb_addr
                + vinfo.yoffset * res_x * sizeof(uint32_t));
+         MI_GFX_WaitAllDone(FALSE, flipFence);
          spruce_igm_sw_frame(
-               (uint32_t*)vid->menuscreen->pixels, front,
+               (uint32_t*)vid->igm_surface->pixels, front,
                res_x, res_y,
-               vid->menuscreen->pitch / sizeof(uint32_t),
+               vid->igm_surface->pitch / sizeof(uint32_t),
                vid->osd_font);
-         GFX_Flip(vid->menuscreen);
+         GFX_Flip(vid->igm_surface);
       }
 #endif
       return true;
@@ -973,6 +984,7 @@ static bool sdl_miyoomini_gfx_frame(void *data, const void *frame,
    } else {
       if (!vid->was_in_menu) {
          vid->was_in_menu = true;
+         MI_GFX_WaitAllDone(FALSE, flipFence);
          stOpt.eRotate = E_MI_GFX_ROTATE_180;
       }
       SDL_SoftStretch(vid->menuscreen_rgui, NULL, vid->menuscreen, rgui_menu_stretch ? NULL : &rgui_menu_dest_rect);
