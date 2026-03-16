@@ -1,3 +1,5 @@
+diff --git a/runloop.c b/runloop.c
+index 5ad0fe5..2305c31 100644
 --- a/runloop.c
 +++ b/runloop.c
 @@ -208,6 +208,9 @@
@@ -10,14 +12,14 @@
  #ifdef HAVE_CHEATS
  #include "cheat_manager.h"
  #endif
-@@ -6008,14 +6011,25 @@
+@@ -6006,15 +6009,25 @@ static enum runloop_state_enum runloop_check_state(
+ 
        if (pressed && !old_pressed)
        {
 -         bool core_is_running    = runloop_st->flags & RUNLOOP_FLAG_CORE_RUNNING;
 -
 -         if (menu_st->flags & MENU_ST_FLAG_ALIVE)
 +#ifdef HAVE_SPRUCE_IGM_SW
-+         /* Spruce IGM (software) intercepts menu toggle when enabled */
 +         if (spruce_igm_sw_is_enabled()
 +               && !(menu_st->flags & MENU_ST_FLAG_ALIVE))
           {
@@ -42,11 +44,11 @@
        }
        /* Initial menu toggle on startup */
        else if (core_type_is_dummy && !(menu_st->flags & MENU_ST_FLAG_ALIVE))
-@@ -7323,6 +7337,11 @@
+@@ -7332,6 +7345,9 @@ int runloop_iterate(void)
+          }
+ #endif
           video_driver_cached_frame();
 +#ifdef HAVE_SPRUCE_IGM_SW
-+         /* Process deferred IGM actions now that we're back
-+          * in the runloop context (outside the render callback). */
 +         spruce_igm_sw_process_pending();
 +#endif
           goto end;
