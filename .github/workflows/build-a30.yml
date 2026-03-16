@@ -30,7 +30,8 @@ jobs:
             gh release create "$TAG" \
               --target "${{ github.ref_name }}" \
               --title "Latest Build" \
-              --notes "RetroArch ${{ github.event.inputs.retroarch_version || 'v1.22.2' }} binaries for spruce"
+              --notes "RetroArch ${{ github.event.inputs.retroarch_version || 'v1.22.2' }} binaries for spruce" \
+            || true
 
       - name: Download A30 toolchain
         run: |
