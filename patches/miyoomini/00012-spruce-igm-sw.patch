@@ -10,8 +10,7 @@
  #ifdef HAVE_CHEATS
  #include "cheat_manager.h"
  #endif
-@@ -6007,15 +6010,26 @@
-
+@@ -6008,14 +6011,25 @@
        if (pressed && !old_pressed)
        {
 -         bool core_is_running    = runloop_st->flags & RUNLOOP_FLAG_CORE_RUNNING;
@@ -43,8 +42,7 @@
        }
        /* Initial menu toggle on startup */
        else if (core_type_is_dummy && !(menu_st->flags & MENU_ST_FLAG_ALIVE))
-@@ -7321,6 +7335,11 @@
- #endif
+@@ -7323,6 +7337,11 @@
           video_driver_cached_frame();
 +#ifdef HAVE_SPRUCE_IGM_SW
 +         /* Process deferred IGM actions now that we're back
