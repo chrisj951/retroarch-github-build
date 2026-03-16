@@ -1,5 +1,5 @@
 diff --git a/runloop.c b/runloop.c
-index 5ad0fe5..2305c31 100644
+index 679517b..17172ff 100644
 --- a/runloop.c
 +++ b/runloop.c
 @@ -208,6 +208,9 @@
@@ -44,7 +44,7 @@ index 5ad0fe5..2305c31 100644
        }
        /* Initial menu toggle on startup */
        else if (core_type_is_dummy && !(menu_st->flags & MENU_ST_FLAG_ALIVE))
-@@ -7332,6 +7345,9 @@ int runloop_iterate(void)
+@@ -7321,6 +7334,9 @@ int runloop_iterate(void)
           }
  #endif
           video_driver_cached_frame();
