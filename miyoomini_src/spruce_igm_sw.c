@@ -19,6 +19,8 @@
 #include "runloop.h"
 #include "input/input_driver.h"
 #include "menu/menu_driver.h"
+#include <formats/image.h>
+#include <gfx/scaler/scaler.h>
 
 /* ── Menu item definitions ─────────────────────────────────── */
 
@@ -67,7 +69,14 @@ static struct
    int         deferred_close;
    uint16_t    prev_buttons;
    uint32_t   *bg_capture;
+   /* Save state preview */
+   uint32_t   *preview_pixels;
+   unsigned    preview_w;
+   unsigned    preview_h;
+   int         preview_slot;
 } igm;
+
+#define IGM_PREVIEW_NO_SLOT -999
 
 /* ── Helpers ───────────────────────────────────────────────── */
 
@@ -197,6 +206,122 @@ static int text_width(const char *text)
    return (int)strlen(text) * FONT_WIDTH_STRIDE * 2;
 }
 
+/* ── Preview texture management ────────────────────────────── */
+
+static void igm_unload_preview(void)
+{
+   if (igm.preview_pixels)
+   {
+      free(igm.preview_pixels);
+      igm.preview_pixels = NULL;
+   }
+   igm.preview_w    = 0;
+   igm.preview_h    = 0;
+   igm.preview_slot = IGM_PREVIEW_NO_SLOT;
+}
+
+static void igm_load_preview(int slot)
+{
+   char state_path[8192];
+   size_t len;
+   struct texture_image ti = {0};
+
+   igm_unload_preview();
+
+   if (!runloop_get_savestate_path(state_path, sizeof(state_path), slot))
+      return;
+
+   len = strlen(state_path);
+   snprintf(state_path + len, sizeof(state_path) - len, ".png");
+
+   if (access(state_path, F_OK) != 0)
+      return;
+
+   if (!image_texture_load(&ti, state_path))
+      return;
+
+   igm.preview_pixels = ti.pixels;
+   igm.preview_w      = ti.width;
+   igm.preview_h      = ti.height;
+   igm.preview_slot   = slot;
+}
+
+static void igm_update_preview(void)
+{
+   if (igm.selected == IGM_SAVE_STATE || igm.selected == IGM_LOAD_STATE)
+   {
+      settings_t *settings = config_get_ptr();
+      int slot = settings->ints.state_slot;
+      if (slot != igm.preview_slot)
+         igm_load_preview(slot);
+   }
+   else
+   {
+      if (igm.preview_pixels)
+         igm_unload_preview();
+   }
+}
+
+static void igm_draw_preview(uint32_t *buf, unsigned pitch,
+      unsigned scr_w, unsigned scr_h,
+      int area_x, int area_y, int area_w, int area_h)
+{
+   if (!igm.preview_pixels || igm.preview_w == 0 || igm.preview_h == 0)
+      return;
+
+   /* Calculate scaled size preserving aspect ratio */
+   float scale_w = (float)area_w / (float)igm.preview_w;
+   float scale_h = (float)area_h / (float)igm.preview_h;
+   float scale   = (scale_w < scale_h) ? scale_w : scale_h;
+
+   unsigned draw_w = (unsigned)(igm.preview_w * scale);
+   unsigned draw_h = (unsigned)(igm.preview_h * scale);
+   int draw_x = area_x + ((int)area_w - (int)draw_w) / 2;
+   int draw_y = area_y + ((int)area_h - (int)draw_h) / 2;
+
+   /* Scale and blit using scaler */
+   struct scaler_ctx ctx = {0};
+   ctx.in_width   = igm.preview_w;
+   ctx.in_height  = igm.preview_h;
+   ctx.in_stride  = igm.preview_w * sizeof(uint32_t);
+   ctx.in_fmt     = SCALER_FMT_ARGB8888;
+   ctx.out_width  = draw_w;
+   ctx.out_height = draw_h;
+   ctx.out_stride = draw_w * sizeof(uint32_t);
+   ctx.out_fmt    = SCALER_FMT_ARGB8888;
+   ctx.scaler_type = SCALER_TYPE_BILINEAR;
+
+   if (!scaler_ctx_gen_filter(&ctx))
+      return;
+
+   /* Scale to temp buffer then copy to framebuffer */
+   uint32_t *scaled = (uint32_t *)malloc(draw_w * draw_h * sizeof(uint32_t));
+   if (!scaled)
+   {
+      scaler_ctx_gen_reset(&ctx);
+      return;
+   }
+
+   scaler_ctx_scale(&ctx, scaled, igm.preview_pixels);
+   scaler_ctx_gen_reset(&ctx);
+
+   /* Blit scaled preview to framebuffer */
+   unsigned ix, iy;
+   for (iy = 0; iy < draw_h; iy++)
+   {
+      int dy = draw_y + (int)iy;
+      if (dy < 0 || dy >= (int)scr_h) continue;
+      for (ix = 0; ix < draw_w; ix++)
+      {
+         int dx = draw_x + (int)ix;
+         if (dx < 0 || dx >= (int)scr_w) continue;
+         buf[dy * pitch + dx] = scaled[iy * draw_w + ix];
+      }
+   }
+
+   free(scaled);
+}
+
 /* ── Enable check ──────────────────────────────────────────── */
 
 bool spruce_igm_sw_is_enabled(void)
@@ -218,6 +343,7 @@ void spruce_igm_sw_toggle(void)
          free(igm.bg_capture);
          igm.bg_capture = NULL;
       }
+      igm_unload_preview();
 
       if (!igm.was_paused)
          command_event(CMD_EVENT_UNPAUSE, NULL);
@@ -234,6 +360,7 @@ void spruce_igm_sw_toggle(void)
       igm.deferred_close   = IGM_NO_PENDING;
       igm.prev_buttons     = 0xFFFF;
       igm.needs_bg_capture = true;
+      igm.preview_slot     = IGM_PREVIEW_NO_SLOT;
 
       if (!igm.was_paused)
          command_event(CMD_EVENT_PAUSE, NULL);
@@ -263,6 +390,7 @@ void spruce_igm_sw_process_pending(void)
       free(igm.bg_capture);
       igm.bg_capture = NULL;
    }
+   igm_unload_preview();
 
    if (!igm.was_paused)
       command_event(CMD_EVENT_UNPAUSE, NULL);
@@ -342,6 +470,7 @@ static void igm_handle_input(void)
       {
          case IGM_SAVE_STATE:
             command_event(CMD_EVENT_SAVE_STATE, NULL);
+            igm.preview_slot = IGM_PREVIEW_NO_SLOT;
             break;
          default:
             igm.deferred_close = igm.selected;
@@ -376,6 +505,9 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
 
    /* Handle input */
    igm_handle_input();
+
+   /* Update preview if slot changed */
+   igm_update_preview();
 
    settings = config_get_ptr();
 
@@ -482,5 +614,19 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
                arrow_y, ">",
                selected ? COL_TEXT_SEL : COL_TEXT, font);
       }
+   }
+
+   /* ── Save state preview (right of panel) ───────────── */
+   if (igm.preview_pixels
+         && (igm.selected == IGM_SAVE_STATE
+             || igm.selected == IGM_LOAD_STATE))
+   {
+      int preview_area_x = panel_x + panel_w + margin;
+      int preview_area_w = (int)width - preview_area_x - margin;
+      int preview_area_h = panel_h;
+
+      if (preview_area_w > 0)
+         igm_draw_preview(draw_buf, pitch, width, height,
+               preview_area_x, panel_y, preview_area_w, preview_area_h);
    }
 }
