@@ -1,0 +1,47 @@
+--- a/runloop.c
++++ b/runloop.c
+@@ -208,6 +208,9 @@
+ #include "configuration.h"
+ #include "list_special.h"
+ #include "core_option_manager.h"
++#ifdef HAVE_SPRUCE_IGM_SW
++#include "spruce_igm_sw.h"
++#endif
+ #ifdef HAVE_CHEATS
+ #include "cheat_manager.h"
+ #endif
+@@ -6007,6 +6010,17 @@
+       if (pressed && !old_pressed)
+       {
++#ifdef HAVE_SPRUCE_IGM_SW
++         /* Spruce IGM (software) intercepts menu toggle when enabled */
++         if (spruce_igm_sw_is_enabled()
++               && !(menu_st->flags & MENU_ST_FLAG_ALIVE))
++         {
++            spruce_igm_sw_toggle();
++         }
++         else
++#endif
++         {
+          bool core_is_running    = runloop_st->flags & RUNLOOP_FLAG_CORE_RUNNING;
+
+          if (menu_st->flags & MENU_ST_FLAG_ALIVE)
+@@ -6016,6 +6030,7 @@
+          }
+          else
+             retroarch_menu_running();
++         }
+       }
+       /* Initial menu toggle on startup */
+       else if (core_type_is_dummy && !(menu_st->flags & MENU_ST_FLAG_ALIVE))
+@@ -7321,6 +7336,11 @@
+ #endif
+          video_driver_cached_frame();
++#ifdef HAVE_SPRUCE_IGM_SW
++         /* Process deferred IGM actions now that we're back
++          * in the runloop context (outside the render callback). */
++         spruce_igm_sw_process_pending();
++#endif
+          goto end;
+       case RUNLOOP_STATE_MENU:
+ #if defined(HAVE_MENU) && defined(HAVE_NETWORKING)

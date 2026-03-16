@@ -52,6 +52,9 @@
 #include "../../paths.h"
 #include "../../retroarch.h"
 #include "../../runloop.h"
+#ifdef HAVE_SPRUCE_IGM_SW
+#include "../../spruce_igm_sw.h"
+#endif
 
 #define likely(x)   __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
@@ -899,7 +902,23 @@ static bool sdl_miyoomini_gfx_frame(void *data, const void *frame,
    /* If pause is active, we don't render anything
     * so that we don't draw over the menu */
    runloop_state_t *runloop_st = runloop_state_get_ptr();
-   if (unlikely(runloop_st->flags & RUNLOOP_FLAG_PAUSED)) return true;
+   if (unlikely(runloop_st->flags & RUNLOOP_FLAG_PAUSED))
+   {
+#ifdef HAVE_SPRUCE_IGM_SW
+      if (spruce_igm_sw_is_active())
+      {
+         uint32_t *front = (uint32_t*)((uint8_t*)fb_addr
+               + vinfo.yoffset * res_x * sizeof(uint32_t));
+         spruce_igm_sw_frame(
+               (uint32_t*)vid->menuscreen->pixels, front,
+               res_x, res_y,
+               vid->menuscreen->pitch / sizeof(uint32_t),
+               vid->osd_font);
+         GFX_Flip(vid->menuscreen);
+      }
+#endif
+      return true;
+   }
 
    /* If fast forward is currently active, we may
     * push frames at an 'unlimited' rate. Since the
