@@ -274,4 +274,15 @@ static const unsigned char bitmap_bin[2816] = {
    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* code=0xff  */
 };
 
+typedef struct
+{
+   bool **lut;
+   uint16_t glyph_min;
+   uint16_t glyph_max;
+} bitmapfont_lut_t;
+
+bitmapfont_lut_t *bitmapfont_get_lut(void);
+
+void bitmapfont_free_lut(bitmapfont_lut_t *font);
+
 #endif
