@@ -21,17 +21,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create beta release
+      - name: Ensure latest release exists
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="beta-universal"
-          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
-          gh release create "$TAG" \
-            --target "${{ github.ref_name }}" \
-            --title "Beta - RA64.universal" \
-            --notes "RetroArch ${{ github.event.inputs.retroarch_version || 'v1.22.2' }} universal aarch64 binary" \
-            --prerelease
+          TAG="latest"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" \
+              --target "${{ github.ref_name }}" \
+              --title "Latest Build" \
+              --notes "RetroArch ${{ github.event.inputs.retroarch_version || 'v1.22.2' }} binaries for spruce"
 
       - name: Build Docker image
         run: docker build -t ra-builder .
@@ -49,4 +48,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mv output/retroarch output/ra64.universal
-          gh release upload "beta-universal" output/ra64.universal --clobber
+          gh release upload "latest" output/ra64.universal --clobber
