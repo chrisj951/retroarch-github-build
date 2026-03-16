@@ -1,4 +1,4 @@
-name: Build RA32.A30
+name: Build ra32.a30
 
 on:
   workflow_dispatch:
@@ -29,7 +29,7 @@ jobs:
           gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
           gh release create "$TAG" \
             --target "${{ github.ref_name }}" \
-            --title "Beta - RA32.A30" \
+            --title "Beta - ra32.a30" \
             --notes "RetroArch ${{ github.event.inputs.retroarch_version || 'v1.22.2' }} for Miyoo A30" \
             --prerelease
 
@@ -53,5 +53,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mv output/retroarch output/RA32.A30
-          gh release upload "beta-a30" output/RA32.A30 --clobber
+          mv output/retroarch output/ra32.a30
+          gh release upload "beta-a30" output/ra32.a30 --clobber
