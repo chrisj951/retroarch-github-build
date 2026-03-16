@@ -497,10 +497,15 @@ index 0000000..0000000
 +   /* Lazy-load fonts on first render */
 +   if (!igm.font)
 +   {
-+      igm.font       = gfx_display_font_file(p_disp, NULL,
-+                           video_height / 20.0f, false);
-+      igm.font_small = gfx_display_font_file(p_disp, NULL,
-+                           video_height / 28.0f, false);
++      {
++         const char *font_path = "/mnt/SDCARD/Themes/SPRUCE/nunwen.ttf";
++         if (access(font_path, F_OK) != 0)
++            font_path = "/mnt/SDCARD/App/PixelReader/resources/fonts/nunwen.ttf";
++         igm.font       = gfx_display_font_file(p_disp, font_path,
++                              video_height / 20.0f, false);
++         igm.font_small = gfx_display_font_file(p_disp, font_path,
++                              video_height / 28.0f, false);
++      }
 +   }
 +   if (!igm.font)
 +      return;
