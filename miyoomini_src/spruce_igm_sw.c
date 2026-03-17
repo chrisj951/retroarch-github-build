@@ -191,10 +191,6 @@ static void draw_text(uint32_t *buf, unsigned pitch,
 {
    while (*text)
    {
-      /* Shadow */
-      draw_char(buf, pitch, scr_w, scr_h,
-            x + 1, y + 1, *text, COL_SHADOW, font);
-      /* Main */
       x += draw_char(buf, pitch, scr_w, scr_h,
             x, y, *text, color, font);
       text++;
