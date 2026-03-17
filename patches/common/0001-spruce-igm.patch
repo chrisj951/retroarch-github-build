@@ -186,7 +186,7 @@ index 0000000..0000000
 +
 +/* ── Colours — matched to spruceOS theme ───────────────────── */
 +
-+static float color_dim_bg[16]     = COLOR_HEX_TO_FLOAT(0x000000, 0.85f);
++static float color_dim_bg[16]     = COLOR_HEX_TO_FLOAT(0x000000, 0.95f);
 +static float color_selected[16]   = COLOR_HEX_TO_FLOAT(0xC9A227, 0.12f);
 +static float color_accent[16]     = COLOR_HEX_TO_FLOAT(0xC9A227, 0.85f);
 +static float color_title_line[16] = COLOR_HEX_TO_FLOAT(0x665C54, 0.40f);
