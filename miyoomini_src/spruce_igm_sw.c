@@ -603,10 +603,10 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
       {
          int arrow_y = iy + (item_h - glyph_h) / 2;
          draw_text(draw_buf, pitch, width, height,
-               panel_x + 2, arrow_y, "<",
+               panel_x + panel_w / 10, arrow_y, "<",
                selected ? COL_TEXT_SEL : COL_TEXT, font);
          draw_text(draw_buf, pitch, width, height,
-               panel_x + panel_w - 2 - text_width(">"),
+               panel_x + panel_w - panel_w / 10 - text_width(">"),
                arrow_y, ">",
                selected ? COL_TEXT_SEL : COL_TEXT, font);
       }
