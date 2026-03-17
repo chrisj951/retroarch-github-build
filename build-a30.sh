@@ -62,7 +62,7 @@ rm -f "$SYSROOT/usr/lib/libfontconfig"* "$SYSROOT/usr/lib/pkgconfig/fontconfig.p
     --enable-egl \
     --enable-mali_fbdev \
     --enable-sdl2 \
-    --disable-alsa \
+    --enable-alsa \
     --enable-networking \
     --enable-ssl \
     --enable-command \
