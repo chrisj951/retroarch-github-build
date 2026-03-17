@@ -191,10 +191,6 @@ static void draw_text(uint32_t *buf, unsigned pitch,
 {
    while (*text)
    {
-      /* Shadow */
-      draw_char(buf, pitch, scr_w, scr_h,
-            x + 1, y + 1, *text, COL_SHADOW, font);
-      /* Main */
       x += draw_char(buf, pitch, scr_w, scr_h,
             x, y, *text, color, font);
       text++;
@@ -531,9 +527,9 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
       for (px = 0; px < width * height; px++)
       {
          uint32_t c = igm.bg_capture[px];
-         unsigned r = ((c >> 16) & 0xFF) * 90 / 256;
-         unsigned g = ((c >>  8) & 0xFF) * 90 / 256;
-         unsigned b = ( c        & 0xFF) * 90 / 256;
+         unsigned r = ((c >> 16) & 0xFF) * 13 / 256;
+         unsigned g = ((c >>  8) & 0xFF) * 13 / 256;
+         unsigned b = ( c        & 0xFF) * 13 / 256;
          draw_buf[px] = 0xFF000000u | (r << 16) | (g << 8) | b;
       }
    }

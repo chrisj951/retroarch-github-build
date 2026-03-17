@@ -1,0 +1,79 @@
+diff --git a/frontend/drivers/platform_unix.c b/frontend/drivers/platform_unix.c
+index e4ffe0f..68d5341 100644
+--- a/frontend/drivers/platform_unix.c
++++ b/frontend/drivers/platform_unix.c
+@@ -146,6 +146,10 @@ static int speak_pid                     = 0;
+ 
+ static volatile sig_atomic_t unix_sighandler_quit;
+ 
++#ifdef __linux__
++volatile sig_atomic_t unix_sighandler_sigcont;
++#endif
++
+ #ifndef ANDROID
+ static enum frontend_fork unix_fork_mode = FRONTEND_FORK_NONE;
+ #endif
+@@ -2725,6 +2729,14 @@ static void frontend_unix_sighandler(int sig)
+    if (unix_sighandler_quit >= 3) abort();
+ }
+ 
++#ifdef __linux__
++static void frontend_unix_sigcont_handler(int sig)
++{
++   (void)sig;
++   unix_sighandler_sigcont = 1;
++}
++#endif
++
+ static void frontend_unix_install_signal_handlers(void)
+ {
+    struct sigaction sa;
+@@ -2735,6 +2747,16 @@ static void frontend_unix_install_signal_handlers(void)
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGINT, &sa, NULL);
+    sigaction(SIGTERM, &sa, NULL);
++
++#ifdef __linux__
++   {
++      struct sigaction sa_cont;
++      sa_cont.sa_handler = frontend_unix_sigcont_handler;
++      sa_cont.sa_flags   = SA_RESTART;
++      sigemptyset(&sa_cont.sa_mask);
++      sigaction(SIGCONT, &sa_cont, NULL);
++   }
++#endif
+ }
+ 
+ static int frontend_unix_get_signal_handler_state(void)
+diff --git a/runloop.c b/runloop.c
+index 679517b..f4b634c 100644
+--- a/runloop.c
++++ b/runloop.c
+@@ -41,6 +41,10 @@
+ #include <signal.h>
+ #endif
+ 
++#ifdef __linux__
++extern volatile sig_atomic_t unix_sighandler_sigcont;
++#endif
++
+ #if defined(_WIN32) && !defined(_XBOX) && !defined(__WINRT__)
+ #include <objbase.h>
+ #include <process.h>
+@@ -7210,6 +7214,16 @@ int runloop_iterate(void)
+    }
+ #endif
+ 
++#ifdef __linux__
++   /* Reinitialize audio after resume from suspend (SIGCONT).
++    * The audio device may have been invalidated during sleep. */
++   if (unix_sighandler_sigcont)
++   {
++      unix_sighandler_sigcont = 0;
++      command_event(CMD_EVENT_AUDIO_REINIT, NULL);
++   }
++#endif
++
+ #ifdef HAVE_BSV_MOVIE
+    bsv_movie_dequeue_next(input_st);
+ #endif
