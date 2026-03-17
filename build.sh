@@ -56,6 +56,9 @@ export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig
     --enable-builtinzlib \
     --enable-zlib
 
+export CFLAGS="$CFLAGS -DHAVE_SCREEN_ORIENTATION -DGEOMETRY_MENU_ROTATION -D_GNU_SOURCE"
+export CXXFLAGS="$CXXFLAGS -DHAVE_SCREEN_ORIENTATION -DGEOMETRY_MENU_ROTATION -D_GNU_SOURCE"
+
 # Build
 make -j$(nproc)
 
