@@ -1,0 +1,59 @@
+RetroArch Command Line Arguments
+=================================
+
+CORE LOADING & CONTENT
+  -L PATH, --libretro PATH       Specify libretro core path
+  [rom file]                      Load ROM content (positional argument)
+  --subsystem SUBSYSTEM           Use a subsystem of the loaded core
+
+CONFIGURATION
+  -c PATH, --config PATH          Specify config file path
+  --appendconfig PATH             Append additional config files (comma-delimited)
+
+DISPLAY
+  -f, --fullscreen                Force fullscreen mode
+
+SAVE FILES & STATES
+  -s PATH, --save PATH            Override save RAM (.srm) path
+  -S PATH, --savestate PATH       Override save state path
+  -M MODE, --sram-mode MODE       SRAM handling ({no,}load-{no,}save)
+
+RECORDING & PLAYBACK
+  -r PATH, --record PATH          Record gameplay (.mkv recommended)
+  --recordconfig PATH             Config file for recording
+  --size WIDTHxHEIGHT             Recording output dimensions
+  -P PATH, --play-replay PATH     Play back .replay file
+  -R PATH, --record-replay PATH   Start recording .replay on startup
+
+CONTENT PATCHING
+  -U PATCH, --ups PATCH           Apply UPS patch
+  --bps PATCH                     Apply BPS patch
+  --ips PATCH                     Apply IPS patch
+  --xdelta PATCH                  Apply Xdelta patch
+  --no-patch                      Disable all content patching
+
+INPUT DEVICES
+  -N PORT, --nodevice PORT        Disconnect device from port (1-8)
+  -A PORT, --dualanalog PORT      Connect DualAnalog to port (1-8)
+  -d PORT:ID, --device PORT:ID    Connect generic device to port
+
+NETPLAY
+  -H, --host                      Act as netplay host
+  -C SERVER, --connect SERVER     Connect to netplay host
+  -F FRAMES, --frames FRAMES      Netplay sync frames
+  --port PORT                     Netplay port (default: 55435)
+  --spectate                      Spectator mode
+  --nick NICK                     Netplay nickname
+  --command CMD                   Send UDP command to running instance
+
+MENU & DIAGNOSTICS
+  --menu                          Launch directly into menu
+  -h, --help                      Display help
+  --features                      Show compiled features and exit
+  -v, --verbose                   Enable verbose logging
+  -D, --detach                    Detach from console (Windows only)
+
+NOTES
+  - No custom CLI arguments were added by the Spruce patches.
+  - The IGM (In-Game Menu) is controlled via a file flag (IGM.txt).
+  - A30 audio handling uses environment variables, not CLI options.
