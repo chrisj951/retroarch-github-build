@@ -129,7 +129,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,582 @@
+@@ -0,0 +1,585 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
@@ -203,6 +203,7 @@ index 0000000..0000000
 +
 +#define IGM_NO_PENDING      -1
 +#define IGM_PREVIEW_NO_SLOT  -999
++#define IGM_SAVING_NEW_PREVIEW  -999
 +
 +/* ── State ─────────────────────────────────────────────────── */
 +
@@ -299,9 +300,11 @@ index 0000000..0000000
 +static void igm_update_preview(void)
 +{
 +   settings_t *settings = config_get_ptr();
-+   int slot = settings->ints.state_slot;
-+   if (slot != igm.preview_slot)
-+      igm_load_preview(slot);
++   if (settings->ints.state_slot != igm.preview_slot)
++      if(igm.preview_slot < -940) //Allow 1s for a new screenshot to generate
++          igm.preview_slot++;
++      else
++          igm_load_preview(settings->ints.state_slot);
 +}
 +
 +/* ── Battery reading ───────────────────────────────────────── */
@@ -505,7 +508,7 @@ index 0000000..0000000
 +            /* Save is safe from render context — stays in IGM */
 +            command_event(CMD_EVENT_SAVE_STATE, NULL);
 +            /* Force preview reload so it picks up the new screenshot */
-+            igm.preview_slot = IGM_PREVIEW_NO_SLOT;
++            igm.preview_slot = IGM_SAVING_NEW_PREVIEW;
 +            break;
 +         default:
 +            /* All other actions wait for button release, then
