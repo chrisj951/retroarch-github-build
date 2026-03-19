@@ -246,18 +246,10 @@ static void igm_load_preview(int slot)
 
 static void igm_update_preview(void)
 {
-   if (igm.selected == IGM_SAVE_STATE || igm.selected == IGM_LOAD_STATE)
-   {
-      settings_t *settings = config_get_ptr();
-      int slot = settings->ints.state_slot;
-      if (slot != igm.preview_slot)
-         igm_load_preview(slot);
-   }
-   else
-   {
-      if (igm.preview_pixels)
-         igm_unload_preview();
-   }
+   settings_t *settings = config_get_ptr();
+   int slot = settings->ints.state_slot;
+   if (slot != igm.preview_slot)
+      igm_load_preview(slot);
 }
 
 static void igm_draw_preview(uint32_t *buf, unsigned pitch,
@@ -629,9 +621,7 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
    }
 
    /* ── Save state preview (right of panel) ───────────── */
-   if (igm.preview_pixels
-         && (igm.selected == IGM_SAVE_STATE
-             || igm.selected == IGM_LOAD_STATE))
+   if (igm.preview_pixels)
    {
       int preview_area_x = panel_x + panel_w + margin;
       int preview_area_w = (int)width - preview_area_x - margin;
