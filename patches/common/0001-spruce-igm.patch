@@ -129,7 +129,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,539 @@
+@@ -0,0 +1,545 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
@@ -151,7 +151,9 @@ index 0000000..0000000
 +#include <stdio.h>
 +#include <unistd.h>
 +
++#ifdef DINGUX
 +#include "dingux/dingux_utils.h"
++#endif
 +#include "retroarch.h"
 +#include "configuration.h"
 +#include "command.h"
@@ -339,7 +341,11 @@ index 0000000..0000000
 +
 +      /* Flush button state so we don't act on the toggle press itself */
 +      igm.prev_buttons   = 0xFFFF;
++#ifdef DINGUX
 +      igm.battery_level  = dingux_get_battery_level();
++#else
++      igm.battery_level  = -1;
++#endif
 +
 +      /* Pause the core if it isn't already */
 +      if (!igm.was_paused)
