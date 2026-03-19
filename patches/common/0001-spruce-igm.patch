@@ -129,7 +129,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,545 @@
+@@ -0,0 +1,581 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
@@ -151,6 +151,7 @@ index 0000000..0000000
 +#include <stdio.h>
 +#include <unistd.h>
 +
++#include <dirent.h>
 +#ifdef DINGUX
 +#include "dingux/dingux_utils.h"
 +#endif
@@ -303,6 +304,45 @@ index 0000000..0000000
 +      igm_load_preview(slot);
 +}
 +
++/* ── Battery reading ───────────────────────────────────────── */
++
++static int igm_read_battery(void)
++{
++#ifdef DINGUX
++   return dingux_get_battery_level();
++#else
++   /* Generic Linux: scan /sys/class/power_supply/ for a capacity file */
++   DIR *dir = opendir("/sys/class/power_supply");
++   struct dirent *ent;
++   if (!dir)
++      return -1;
++   while ((ent = readdir(dir)) != NULL)
++   {
++      char path[512];
++      FILE *f;
++      int val;
++      if (ent->d_name[0] == '.')
++         continue;
++      snprintf(path, sizeof(path),
++            "/sys/class/power_supply/%s/capacity", ent->d_name);
++      f = fopen(path, "r");
++      if (!f)
++         continue;
++      if (fscanf(f, "%d", &val) == 1)
++      {
++         fclose(f);
++         closedir(dir);
++         if (val < 0)   val = 0;
++         if (val > 100) val = 100;
++         return val;
++      }
++      fclose(f);
++   }
++   closedir(dir);
++   return -1;
++#endif
++}
++
 +/* ── Enable check (file-based flag) ────────────────────────── */
 +
 +#define IGM_FLAG_PATH "/mnt/SDCARD/RetroArch/IGM.txt"
@@ -341,11 +381,7 @@ index 0000000..0000000
 +
 +      /* Flush button state so we don't act on the toggle press itself */
 +      igm.prev_buttons   = 0xFFFF;
-+#ifdef DINGUX
-+      igm.battery_level  = dingux_get_battery_level();
-+#else
-+      igm.battery_level  = -1;
-+#endif
++      igm.battery_level  = igm_read_battery();
 +
 +      /* Pause the core if it isn't already */
 +      if (!igm.was_paused)
