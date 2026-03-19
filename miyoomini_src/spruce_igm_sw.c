@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "dingux/dingux_utils.h"
 #include "retroarch.h"
 #include "configuration.h"
 #include "command.h"
@@ -69,6 +70,7 @@ static struct
    int         deferred_close;
    uint16_t    prev_buttons;
    uint32_t   *bg_capture;
+   int         battery_level;
    /* Save state preview */
    uint32_t   *preview_pixels;
    unsigned    preview_w;
@@ -357,6 +359,7 @@ void spruce_igm_sw_toggle(void)
       igm.prev_buttons     = 0xFFFF;
       igm.needs_bg_capture = true;
       igm.preview_slot     = IGM_PREVIEW_NO_SLOT;
+      igm.battery_level    = dingux_get_battery_level();
 
       if (!igm.was_paused)
          command_event(CMD_EVENT_PAUSE, NULL);
@@ -535,6 +538,19 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
    }
    else
       memset(draw_buf, 0, width * height * sizeof(uint32_t));
+
+   /* ── Battery percentage (top-right) ─────────────── */
+   if (igm.battery_level >= 0)
+   {
+      char batt_buf[8];
+      int batt_tw, batt_x, batt_y;
+      snprintf(batt_buf, sizeof(batt_buf), "%d%%", igm.battery_level);
+      batt_tw = text_width(batt_buf);
+      batt_x  = (int)width - margin - batt_tw;
+      batt_y  = margin;
+      draw_text(draw_buf, pitch, width, height,
+            batt_x, batt_y, batt_buf, COL_TEXT, font);
+   }
 
    /* ── Title ───────────────────────────────────────── */
    {

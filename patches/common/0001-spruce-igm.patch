@@ -129,7 +129,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,534 @@
+@@ -0,0 +1,549 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
@@ -151,6 +151,7 @@ index 0000000..0000000
 +#include <stdio.h>
 +#include <unistd.h>
 +
++#include "dingux/dingux_utils.h"
 +#include "retroarch.h"
 +#include "configuration.h"
 +#include "command.h"
@@ -212,6 +213,7 @@ index 0000000..0000000
 +   font_data_t *font;
 +   font_data_t *font_small;
 +   uint16_t    prev_buttons;     /* previous frame joypad bits      */
++   int         battery_level;
 +   /* Save state preview */
 +   uintptr_t   preview_texture;
 +   unsigned    preview_tex_w;
@@ -345,6 +347,7 @@ index 0000000..0000000
 +
 +      /* Flush button state so we don't act on the toggle press itself */
 +      igm.prev_buttons   = 0xFFFF;
++      igm.battery_level  = dingux_get_battery_level();
 +
 +      /* Pause the core if it isn't already */
 +      if (!igm.was_paused)
@@ -536,6 +539,18 @@ index 0000000..0000000
 +         0, 0, video_width, video_height,
 +         video_width, video_height,
 +         color_dim_bg, NULL);
++
++   /* ── Battery percentage (top-right) ─────────────────── */
++   if (igm.battery_level >= 0 && igm.font_small)
++   {
++      char batt_buf[8];
++      snprintf(batt_buf, sizeof(batt_buf), "%d%%", igm.battery_level);
++      igm_draw_text(igm.font_small, batt_buf,
++            (float)(video_width - margin),
++            (float)(margin + video_height / 28.0f),
++            video_width, video_height,
++            TEXT_COLOR_NORMAL, TEXT_ALIGN_RIGHT);
++   }
 +
 +   /* ── Title ─────────────────────────────────────────── */
 +   if (igm.font_small)
