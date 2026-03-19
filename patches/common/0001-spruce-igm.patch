@@ -129,7 +129,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,581 @@
+@@ -0,0 +1,582 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
@@ -382,6 +382,7 @@ index 0000000..0000000
 +      /* Flush button state so we don't act on the toggle press itself */
 +      igm.prev_buttons   = 0xFFFF;
 +      igm.battery_level  = igm_read_battery();
++      igm.preview_slot   = IGM_PREVIEW_NO_SLOT;
 +
 +      /* Pause the core if it isn't already */
 +      if (!igm.was_paused)
