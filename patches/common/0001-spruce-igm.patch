@@ -129,7 +129,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,582 @@
+@@ -0,0 +1,614 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
@@ -150,7 +150,7 @@ index 0000000..0000000
 +#include <string.h>
 +#include <stdio.h>
 +#include <unistd.h>
-+
++#include <sys/stat.h>  // for struct stat, stat()
 +#include <dirent.h>
 +#ifdef DINGUX
 +#include "dingux/dingux_utils.h"
@@ -222,6 +222,7 @@ index 0000000..0000000
 +   unsigned    preview_tex_w;
 +   unsigned    preview_tex_h;
 +   int         preview_slot;     /* slot loaded, or IGM_PREVIEW_NO_SLOT */
++   char        state_path[8192];     /* slot loaded, or IGM_PREVIEW_NO_SLOT */
 +} igm;
 +
 +/* ── Helpers ───────────────────────────────────────────────── */
@@ -275,33 +276,64 @@ index 0000000..0000000
 +
 +static void igm_load_preview(int slot)
 +{
-+   char state_path[8192];
++   igm.state_path[0] = '\0';
 +   size_t len;
 +
 +   igm_unload_preview();
 +
-+   if (!runloop_get_savestate_path(state_path, sizeof(state_path), slot))
++   if (!runloop_get_savestate_path(igm.state_path, sizeof(igm.state_path), slot))
 +      return;
 +
-+   len = strlen(state_path);
-+   snprintf(state_path + len, sizeof(state_path) - len, ".png");
++   len = strlen(igm.state_path);
++   snprintf(igm.state_path + len, sizeof(igm.state_path) - len, ".png");
 +
-+   if (access(state_path, F_OK) != 0)
++   if (access(igm.state_path, F_OK) != 0)
 +      return;
 +
-+   gfx_display_reset_icon_texture(state_path, &igm.preview_texture,
++   gfx_display_reset_icon_texture(igm.state_path, &igm.preview_texture,
 +         TEXTURE_FILTER_MIPMAP_LINEAR,
 +         &igm.preview_tex_w, &igm.preview_tex_h);
 +
 +   igm.preview_slot = slot;
 +}
 +
++static time_t igm_preview_mtime = 0;  /* last known mtime of PNG */
++static off_t  igm_preview_size  = 0;  /* last known size of PNG */
++
 +static void igm_update_preview(void)
 +{
-+   settings_t *settings = config_get_ptr();
-+   int slot = settings->ints.state_slot;
-+   if (slot != igm.preview_slot)
-+      igm_load_preview(slot);
++    settings_t *settings = config_get_ptr();
++    int slot = settings->ints.state_slot;
++    struct stat st;
++    bool reload = false;
++
++    /* Reload if slot changed or state_path not yet set */
++    if (slot != igm.preview_slot || igm.state_path[0] == '\0')
++        reload = true;
++    else if (stat(igm.state_path, &st) == 0)
++    {
++        /* Reload if the PNG file has been updated or size changed */
++        if (st.st_mtime != igm_preview_mtime || st.st_size != igm_preview_size)
++            reload = true;
++    }
++
++    if (!reload)
++        return;
++
++    /* Load preview */
++    igm_load_preview(slot);
++
++    /* Update mtime and size only if file exists and has size > 0 */
++    if (stat(igm.state_path, &st) == 0 && st.st_size > 0)
++    {
++        igm_preview_mtime = st.st_mtime;
++        igm_preview_size  = st.st_size;
++    }
++    else
++    {
++        igm_preview_mtime = 0;
++        igm_preview_size  = 0;
++    }
 +}
 +
 +/* ── Battery reading ───────────────────────────────────────── */
@@ -383,7 +415,7 @@ index 0000000..0000000
 +      igm.prev_buttons   = 0xFFFF;
 +      igm.battery_level  = igm_read_battery();
 +      igm.preview_slot   = IGM_PREVIEW_NO_SLOT;
-+
++      igm.state_path[0] = '\0';
 +      /* Pause the core if it isn't already */
 +      if (!igm.was_paused)
 +         command_event(CMD_EVENT_PAUSE, NULL);
