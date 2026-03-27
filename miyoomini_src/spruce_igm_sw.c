@@ -621,7 +621,7 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
       int batt_tw, batt_x, batt_y;
       snprintf(batt_buf, sizeof(batt_buf), "%d%%", igm.battery_level);
       batt_tw = text_width(batt_buf);
-      batt_x  = (int)width - margin*2 - batt_tw;
+      batt_x  = (int)width - margin*3 - batt_tw;
       batt_y  = margin*2;
       draw_text(draw_buf, pitch, width, height,
             batt_x, batt_y, batt_buf, COL_TEXT, font);
