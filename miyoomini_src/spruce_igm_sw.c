@@ -22,6 +22,7 @@
 #include "menu/menu_driver.h"
 #include <formats/image.h>
 #include <gfx/scaler/scaler.h>
+#include <math.h>
 
 /* ── Menu item definitions ─────────────────────────────────── */
 
@@ -30,6 +31,7 @@ enum spruce_igm_sw_item
    IGM_RESUME = 0,
    IGM_SAVE_STATE,
    IGM_LOAD_STATE,
+   IGM_FFW_SPEED,
    IGM_RESET,
    IGM_RETROARCH,
    IGM_EXIT,
@@ -40,10 +42,64 @@ static const char *igm_labels[IGM_ITEM_COUNT] = {
    "Resume",
    "Save",
    "Load",
+   "FFW",
    "Reset",
-   "RetroArch Menu",
-   "Exit Game"
+   "RA Menu",
+   "Exit RA"
 };
+
+typedef struct
+{
+   float ratio;
+   bool  unlimited;
+} igm_ffw_entry_t;
+
+static const igm_ffw_entry_t igm_ffw_table[] = {
+   {1.0f, false},  /* optional: normal speed */
+   {1.5f, false},
+   {2.0f, false},
+   {2.5f, false},
+   {3.0f, false},
+   {0.0f, true}    /* unlimited */
+};
+#define IGM_FFW_COUNT (sizeof(igm_ffw_table)/sizeof(igm_ffw_table[0]))
+
+static int igm_find_ffw_index(void)
+{
+    settings_t *settings = config_get_ptr();
+    float ratio = settings->floats.fastforward_ratio;
+
+    for (size_t i = 0; i < IGM_FFW_COUNT; i++)
+    {
+        if (igm_ffw_table[i].unlimited)
+        {
+            // unlimited is represented by ratio 0
+            if (ratio == 0.0f)
+                return (int)i;
+        }
+        else
+        {
+            if (fabsf(igm_ffw_table[i].ratio - ratio) < 0.01f)
+                return (int)i;
+        }
+    }
+
+    return 0; /* fallback */
+}
+
+static void igm_apply_ffw_index(int index)
+{
+    settings_t *settings = config_get_ptr();
+
+    /* Wrap around the table */
+    index = (index + IGM_FFW_COUNT) % IGM_FFW_COUNT;
+
+    const igm_ffw_entry_t *entry = &igm_ffw_table[index];
+
+    /* Apply fast-forward ratio and throttle/unlimited */
+    settings->floats.fastforward_ratio = entry->ratio;
+
+}
 
 /* ── Colours (ARGB8888) ────────────────────────────────────── */
 
@@ -447,6 +503,15 @@ static void igm_handle_input(void)
          command_event(CMD_EVENT_SAVE_STATE_DECREMENT, NULL);
       if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_RIGHT))
          command_event(CMD_EVENT_SAVE_STATE_INCREMENT, NULL);
+   } else if(igm.selected == IGM_FFW_SPEED){
+        //FFW speeds = [1.5, 2, 3, Unlimited]
+        int ffw_index = igm_find_ffw_index();
+        if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_LEFT)){
+            igm_apply_ffw_index(ffw_index  - 1);
+        } else if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_RIGHT)){
+            igm_apply_ffw_index(ffw_index  + 1);
+        }
+
    }
 
    if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_B))
@@ -546,7 +611,7 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
 
    /* ── Title ───────────────────────────────────────── */
    {
-      const char *title = "spruceOS Menu";
+      const char *title = "Menu";
       int tw = text_width(title);
       int tx = text_cx - tw / 2;
       int ty = panel_y + (title_h - glyph_h) / 2;
@@ -594,6 +659,14 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
             snprintf(slot_buf, sizeof(slot_buf), "%s Slot %d",
                   igm_labels[i], slot);
          label = slot_buf;
+      } else if (i == IGM_FFW_SPEED){
+            if(settings->floats.fastforward_ratio > 1.0){
+                snprintf(slot_buf, sizeof(slot_buf), "%s %.1fx", igm_labels[i], settings->floats.fastforward_ratio);                
+            } else {
+                snprintf(slot_buf, sizeof(slot_buf), "%s U",
+                    igm_labels[i]);
+            }
+            label = slot_buf;
       }
       else
          label = igm_labels[i];
@@ -607,7 +680,7 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
             tx, ty, label, text_col, font);
 
       /* Arrows for Save/Load rows */
-      if (i == IGM_SAVE_STATE || i == IGM_LOAD_STATE)
+      if (i == IGM_SAVE_STATE || i == IGM_LOAD_STATE || i == IGM_FFW_SPEED)
       {
          int arrow_y = iy + (item_h - glyph_h) / 2;
          draw_text(draw_buf, pitch, width, height,
