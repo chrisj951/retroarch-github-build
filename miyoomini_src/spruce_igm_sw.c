@@ -542,7 +542,7 @@ static void igm_handle_input(void)
    }
 }
 
-void spruce_igm_notify_close(uint32_t *draw_buf, size_t width, size_t height)
+void spruce_igm_notify_close(uint32_t *draw_buf, unsigned width, unsigned height)
 {
       if (igm.bg_capture)
       {
