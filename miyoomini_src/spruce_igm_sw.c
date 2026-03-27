@@ -542,6 +542,17 @@ static void igm_handle_input(void)
    }
 }
 
+void spruce_igm_notify_close(uint32_t *draw_buf, size_t width, size_t height)
+{
+      if (igm.bg_capture)
+      {
+         memcpy(draw_buf, igm.bg_capture, width * height * sizeof(uint32_t));
+         free(igm.bg_capture);
+         igm.bg_capture = NULL;
+         igm_unload_preview();  // optional: clear preview when menu closes
+      }
+}
+
 /* ── Rendering ─────────────────────────────────────────────── */
 
 void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
@@ -553,13 +564,6 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
    settings_t *settings;
 
    if (!igm.active) {
-      if (igm.bg_capture)
-      {
-         memcpy(draw_buf, igm.bg_capture, width * height * sizeof(uint32_t));
-         free(igm.bg_capture);
-         igm.bg_capture = NULL;
-      }
-      igm_unload_preview();  // optional: clear preview when menu closes
       return;
    }
    /* Capture background on first frame */
