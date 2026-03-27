@@ -256,11 +256,11 @@ index 0000000..0000000
 +   gfx_display_draw_text(font, text,
 +         x + 2.0f, y + 2.0f, vw, vh,
 +         TEXT_COLOR_SHADOW, align,
-+         1.0f, false, 0.0f, false);
++         1.5f, false, 0.0f, false);
 +   gfx_display_draw_text(font, text,
 +         x, y, vw, vh,
 +         color, align,
-+         1.0f, false, 0.0f, false);
++         1.5f, false, 0.0f, false);
 +}
 +
 +/* ── Preview texture management ────────────────────────────── */
