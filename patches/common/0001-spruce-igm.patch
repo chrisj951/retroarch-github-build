@@ -187,8 +187,8 @@ index 0000000..0000000
 +   "Load",
 +   "FFW",
 +   "Reset",
-+   "RetroArch Menu",
-+   "Exit Game"
++   "RA Menu",
++   "Exit RA"
 +};
 +
 +/* ── Colours — matched to spruceOS theme ───────────────────── */
@@ -684,7 +684,7 @@ index 0000000..0000000
 +
 +   /* ── Title ─────────────────────────────────────────── */
 +   if (igm.font_small)
-+      igm_draw_text(igm.font_small, "spruceOS Menu",
++      igm_draw_text(igm.font_small, "Menu",
 +            (float)text_cx,
 +            (float)(panel_y + title_h * 0.68f),
 +            video_width, video_height,
