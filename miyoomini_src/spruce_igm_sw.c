@@ -610,8 +610,8 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
       int batt_tw, batt_x, batt_y;
       snprintf(batt_buf, sizeof(batt_buf), "%d%%", igm.battery_level);
       batt_tw = text_width(batt_buf);
-      batt_x  = (int)width - margin - batt_tw;
-      batt_y  = margin;
+      batt_x  = (int)width - margin*2 - batt_tw;
+      batt_y  = margin*2;
       draw_text(draw_buf, pitch, width, height,
             batt_x, batt_y, batt_buf, COL_TEXT, font);
    }
@@ -663,7 +663,7 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
             snprintf(slot_buf, sizeof(slot_buf), "%s Auto",
                   igm_labels[i]);
          else
-            snprintf(slot_buf, sizeof(slot_buf), "%s Slot %d",
+            snprintf(slot_buf, sizeof(slot_buf), "%s %d",
                   igm_labels[i], slot);
          label = slot_buf;
       } else if (i == IGM_FFW_SPEED){
@@ -691,10 +691,10 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
       {
          int arrow_y = iy + (item_h - glyph_h) / 2;
          draw_text(draw_buf, pitch, width, height,
-               panel_x + panel_w / 10, arrow_y, "<",
+               panel_x + panel_w / 9, arrow_y, "<",
                selected ? COL_TEXT_SEL : COL_TEXT, font);
          draw_text(draw_buf, pitch, width, height,
-               panel_x + panel_w - panel_w / 10 - text_width(">"),
+               panel_x + panel_w - panel_w / 9 - text_width(">"),
                arrow_y, ">",
                selected ? COL_TEXT_SEL : COL_TEXT, font);
       }
