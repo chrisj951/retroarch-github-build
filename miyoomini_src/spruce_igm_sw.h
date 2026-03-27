@@ -5,10 +5,7 @@
 #include <stdint.h>
 #include "gfx/drivers_font_renderer/bitmap.h"
 
-bool spruce_igm_sw_is_enabled(void);
-void spruce_igm_sw_toggle(void);
-bool spruce_igm_sw_is_active(void);
-void spruce_igm_sw_process_pending(void);
+void spruce_igm_notify_close(uint32_t *draw_buf, size_t width, size_t height);
 
 /* Called by the miyoomini video driver each frame while active.
  * draw_buf  : destination pixel buffer (menuscreen, ARGB8888)
