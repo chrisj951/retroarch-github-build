@@ -185,7 +185,7 @@ index 0000000..0000000
 +   "Resume",
 +   "Save",
 +   "Load",
-+   "FFW Spd",
++   "FFW",
 +   "Reset",
 +   "RetroArch Menu",
 +   "Exit Game"
@@ -731,7 +731,7 @@ index 0000000..0000000
 +               snprintf(slot_buf, sizeof(slot_buf), "%s Auto",
 +                     igm_labels[i]);
 +            else
-+               snprintf(slot_buf, sizeof(slot_buf), "%s Slot %d",
++               snprintf(slot_buf, sizeof(slot_buf), "%s %d",
 +                     igm_labels[i], slot);
 +            label = slot_buf;
 +         } else if (i == IGM_FFW_SPEED){
