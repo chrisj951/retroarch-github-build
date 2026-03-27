@@ -214,11 +214,11 @@ static int draw_char(uint32_t *buf, unsigned pitch,
    bool *lut;
 
    if (!font || symbol >= font->glyph_max)
-      return FONT_WIDTH_STRIDE * 2;
+      return FONT_WIDTH_STRIDE * 3;
 
    lut = font->lut[symbol];
    if (!lut)
-      return FONT_WIDTH_STRIDE * 2;
+      return FONT_WIDTH_STRIDE * 3;
 
    for (j = 0; j < FONT_HEIGHT; j++)
    {
@@ -226,20 +226,27 @@ static int draw_char(uint32_t *buf, unsigned pitch,
       {
          if (lut[i + j * FONT_WIDTH])
          {
-            int px = x + i * 2;
-            int py = y + j * 2;
+            int px = x + i * 3;
+            int py = y + j * 3;
             if (px >= 0 && px + 1 < (int)scr_w &&
                 py >= 0 && py + 1 < (int)scr_h)
             {
                buf[(py    ) * pitch + px    ] = color;
                buf[(py    ) * pitch + px + 1] = color;
+               buf[(py    ) * pitch + px + 2] = color;
+
                buf[(py + 1) * pitch + px    ] = color;
                buf[(py + 1) * pitch + px + 1] = color;
+               buf[(py + 1) * pitch + px + 2] = color;
+
+               buf[(py + 2) * pitch + px    ] = color;
+               buf[(py + 2) * pitch + px + 1] = color;
+               buf[(py + 2) * pitch + px + 2] = color;
             }
          }
       }
    }
-   return FONT_WIDTH_STRIDE * 2;
+   return FONT_WIDTH_STRIDE * 3;
 }
 
 static void draw_text(uint32_t *buf, unsigned pitch,
