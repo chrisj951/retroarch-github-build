@@ -550,6 +550,9 @@ void spruce_igm_notify_close(uint32_t *draw_buf, unsigned width, unsigned height
          free(igm.bg_capture);
          igm.bg_capture = NULL;
          igm_unload_preview();  // optional: clear preview when menu closes
+      } else {
+         // Clear the draw buffer (fill with black)
+         memset(draw_buf, 0, width * height * sizeof(uint32_t));
       }
 }
 

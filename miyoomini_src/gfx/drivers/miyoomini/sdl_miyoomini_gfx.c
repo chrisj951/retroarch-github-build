@@ -629,9 +629,9 @@ static void sdl_miyoomini_gfx_free(void *data) {
    if (vid->menuscreen) GFX_FreeSurface(vid->menuscreen);
    if (vid->menuscreen_rgui) GFX_FreeSurface(vid->menuscreen_rgui);
 #ifdef HAVE_SPRUCE_IGM_SW
+   uint32_t *draw_buf = (uint32_t *)vid->igm_surface->pixels; // raw framebuffer pointer
+   spruce_igm_notify_close(draw_buf, vid->video_w, vid->video_h);
    if (vid->igm_surface){
-      uint32_t *draw_buf = (uint32_t *)vid->igm_surface->pixels; // raw framebuffer pointer
-      spruce_igm_notify_close(draw_buf, vid->video_w, vid->video_h);
       GFX_FreeSurface(vid->igm_surface);
    }
 #endif
