@@ -552,9 +552,16 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
    char slot_buf[64];
    settings_t *settings;
 
-   if (!igm.active)
+   if (!igm.active) {
+      if (igm.bg_capture)
+      {
+         memcpy(draw_buf, igm.bg_capture, width * height * sizeof(uint32_t));
+         free(igm.bg_capture);
+         igm.bg_capture = NULL;
+      }
+      igm_unload_preview();  // optional: clear preview when menu closes
       return;
-
+   }
    /* Capture background on first frame */
    if (igm.needs_bg_capture)
    {
