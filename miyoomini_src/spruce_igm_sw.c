@@ -702,7 +702,7 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
                selected ? COL_TEXT_SEL : COL_TEXT, font);
          draw_text(draw_buf, pitch, width, height,
                panel_x + panel_w - panel_w / 9 - text_width(">"),
-               arrow_y, ">",
+               arrow_y, "  >",
                selected ? COL_TEXT_SEL : COL_TEXT, font);
       }
    }
