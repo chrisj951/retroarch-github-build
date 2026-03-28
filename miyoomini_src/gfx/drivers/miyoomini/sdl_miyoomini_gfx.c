@@ -933,9 +933,9 @@ static bool sdl_miyoomini_gfx_frame(void *data, const void *frame,
       } else if(menu_was_alive_last_frame){
          menu_was_alive_last_frame = false;
          //Wipe the frame buffer
-         sdl_miyoomini_clear_border(fb_addr, vid->video_x, vid->video_y, vid->video_w, vid->video_h);
+         //sdl_miyoomini_clear_border(fb_addr, vid->video_x, vid->video_y, vid->video_w, vid->video_h);
          // Clear the draw buffer (fill with black)
-         memset(vid->igm_surface->pixels, 0, res_x * res_y * sizeof(uint32_t));
+         //memset(vid->igm_surface->pixels, 0, res_x * res_y * sizeof(uint32_t));
       } 
 #endif
       return true;
