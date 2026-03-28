@@ -136,6 +136,28 @@ static struct
    int         preview_slot;
 } igm;
 
+
+uint32_t *cached_draw_buf = NULL;
+unsigned cached_width = 0;
+unsigned cached_height = 0;
+void spruce_igm_notify_close()
+{
+      if(NULL != cached_draw_buf){
+         if (igm.bg_capture)
+         {
+            memcpy(cached_draw_buf, igm.bg_capture, cached_width * cached_height * sizeof(uint32_t));
+            free(igm.bg_capture);
+            igm.bg_capture = NULL;
+         } else {
+            // Clear the draw buffer (fill with black)
+            memset(cached_draw_buf, 0, cached_width * cached_height * sizeof(uint32_t));
+         }
+
+         cached_draw_buf = NULL;
+      }
+
+}
+
 #define IGM_PREVIEW_NO_SLOT -999
 
 /* ── Helpers ───────────────────────────────────────────────── */
@@ -390,6 +412,8 @@ void spruce_igm_sw_toggle(void)
 {
    if (igm.active)
    {
+      spruce_igm_notify_close();
+
       igm.active         = false;
       igm.pending_action = IGM_NO_PENDING;
 
@@ -449,9 +473,9 @@ void spruce_igm_sw_process_pending(void)
    }
    igm_unload_preview();
 
-   if (!igm.was_paused)
+   if (!igm.was_paused) {
       command_event(CMD_EVENT_UNPAUSE, NULL);
-   
+   }
    menu_state_get_ptr()->input_driver_flushing_input = 2;
 
    switch (action)
@@ -476,7 +500,8 @@ void spruce_igm_sw_process_pending(void)
 
 /* ── Input handling ────────────────────────────────────────── */
 
-static void igm_handle_input()
+static void igm_handle_input(uint32_t *draw_buf,
+      unsigned width, unsigned height)
 {
    uint16_t cur  = igm_read_buttons();
    uint16_t prev = igm.prev_buttons;
@@ -527,6 +552,7 @@ static void igm_handle_input()
    if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_B))
    {
       igm.deferred_close = IGM_RESUME;
+      memset(draw_buf, 0, width * height * sizeof(uint32_t));
       return;
    }
 
@@ -537,6 +563,10 @@ static void igm_handle_input()
          case IGM_SAVE_STATE:
             command_event(CMD_EVENT_SAVE_STATE, NULL);
             igm.preview_slot = IGM_PREVIEW_NO_SLOT;
+            break;
+         case IGM_RESUME:
+            igm.deferred_close = igm.selected;
+            memset(draw_buf, 0, width * height * sizeof(uint32_t));
             break;
          default:
             igm.deferred_close = igm.selected;
@@ -556,9 +586,9 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
    char slot_buf[64];
    settings_t *settings;
 
-   if (!igm.active)
+   if (!igm.active) {
       return;
-
+   }
    /* Capture background on first frame */
    if (igm.needs_bg_capture)
    {
@@ -571,7 +601,7 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
    }
 
    /* Handle input */
-   igm_handle_input();
+   igm_handle_input(draw_buf, width, height);
    if(igm.deferred_close == IGM_RESUME){
       return;
    }
