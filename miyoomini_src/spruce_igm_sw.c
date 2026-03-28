@@ -22,6 +22,8 @@
 #include "menu/menu_driver.h"
 #include <formats/image.h>
 #include <gfx/scaler/scaler.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 /* ── Menu item definitions ─────────────────────────────────── */
 
@@ -76,6 +78,7 @@ static struct
    unsigned    preview_w;
    unsigned    preview_h;
    int         preview_slot;
+   char        state_path[8192];
 } igm;
 
 #define IGM_PREVIEW_NO_SLOT -999
@@ -220,22 +223,22 @@ static void igm_unload_preview(void)
 
 static void igm_load_preview(int slot)
 {
-   char state_path[8192];
+   igm.state_path[0] = '\0';
    size_t len;
    struct texture_image ti = {0};
 
    igm_unload_preview();
 
-   if (!runloop_get_savestate_path(state_path, sizeof(state_path), slot))
+   if (!runloop_get_savestate_path(igm.state_path, sizeof(igm.state_path), slot))
       return;
 
-   len = strlen(state_path);
-   snprintf(state_path + len, sizeof(state_path) - len, ".png");
+   len = strlen(igm.state_path);
+   snprintf(igm.state_path + len, sizeof(igm.state_path) - len, ".png");
 
-   if (access(state_path, F_OK) != 0)
+   if (access(igm.state_path, F_OK) != 0)
       return;
 
-   if (!image_texture_load(&ti, state_path))
+   if (!image_texture_load(&ti, igm.state_path))
       return;
 
    igm.preview_pixels = ti.pixels;
@@ -244,12 +247,39 @@ static void igm_load_preview(int slot)
    igm.preview_slot   = slot;
 }
 
+static time_t igm_preview_mtime = 0;
+static off_t  igm_preview_size  = 0;
+
 static void igm_update_preview(void)
 {
    settings_t *settings = config_get_ptr();
    int slot = settings->ints.state_slot;
-   if (slot != igm.preview_slot)
-      igm_load_preview(slot);
+   struct stat st;
+   bool reload = false;
+
+   if (slot != igm.preview_slot || igm.state_path[0] == '\0')
+      reload = true;
+   else if (stat(igm.state_path, &st) == 0)
+   {
+      if (st.st_mtime != igm_preview_mtime || st.st_size != igm_preview_size)
+         reload = true;
+   }
+
+   if (!reload)
+      return;
+
+   igm_load_preview(slot);
+
+   if (stat(igm.state_path, &st) == 0 && st.st_size > 0)
+   {
+      igm_preview_mtime = st.st_mtime;
+      igm_preview_size  = st.st_size;
+   }
+   else
+   {
+      igm_preview_mtime = 0;
+      igm_preview_size  = 0;
+   }
 }
 
 static void igm_draw_preview(uint32_t *buf, unsigned pitch,
@@ -351,6 +381,7 @@ void spruce_igm_sw_toggle(void)
       igm.prev_buttons     = 0xFFFF;
       igm.needs_bg_capture = true;
       igm.preview_slot     = IGM_PREVIEW_NO_SLOT;
+      igm.state_path[0]    = '\0';
       igm.battery_level    = dingux_get_battery_level();
 
       if (!igm.was_paused)
@@ -410,7 +441,8 @@ void spruce_igm_sw_process_pending(void)
 
 /* ── Input handling ────────────────────────────────────────── */
 
-static void igm_handle_input(void)
+static bool igm_handle_input(uint32_t *draw_buf,
+      unsigned width, unsigned height)
 {
    uint16_t cur  = igm_read_buttons();
    uint16_t prev = igm.prev_buttons;
@@ -424,7 +456,9 @@ static void igm_handle_input(void)
          igm.pending_action = igm.deferred_close;
          igm.deferred_close = IGM_NO_PENDING;
       }
-      return;
+      for (unsigned px = 0; px < width * height; px++)
+         draw_buf[px] = 0xFF000000u;
+      return false;
    }
 
    if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_UP))
@@ -452,7 +486,9 @@ static void igm_handle_input(void)
    if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_B))
    {
       igm.deferred_close = IGM_RESUME;
-      return;
+      for (unsigned px = 0; px < width * height; px++)
+         draw_buf[px] = 0xFF000000u;
+      return false;
    }
 
    if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_A))
@@ -463,11 +499,18 @@ static void igm_handle_input(void)
             command_event(CMD_EVENT_SAVE_STATE, NULL);
             igm.preview_slot = IGM_PREVIEW_NO_SLOT;
             break;
+         case IGM_RESUME:
+            igm.deferred_close = igm.selected;
+            for (unsigned px = 0; px < width * height; px++)
+               draw_buf[px] = 0xFF000000u;
+            return false;
          default:
             igm.deferred_close = igm.selected;
-            return;
+            break;
       }
    }
+
+   return true;
 }
 
 /* ── Rendering ─────────────────────────────────────────────── */
@@ -495,7 +538,8 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
    }
 
    /* Handle input */
-   igm_handle_input();
+   if (!igm_handle_input(draw_buf, width, height))
+      return;
 
    /* Update preview if slot changed */
    igm_update_preview();
@@ -519,13 +563,15 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
    if (igm.bg_capture)
    {
       unsigned px;
-      for (px = 0; px < width * height; px++)
+      uint32_t total_pixels = width * height;
+      for (px = 0; px < total_pixels; px++)
       {
          uint32_t c = igm.bg_capture[px];
-         unsigned r = ((c >> 16) & 0xFF) * 13 / 256;
-         unsigned g = ((c >>  8) & 0xFF) * 13 / 256;
-         unsigned b = ( c        & 0xFF) * 13 / 256;
-         draw_buf[px] = 0xFF000000u | (r << 16) | (g << 8) | b;
+         unsigned r = ((c >> 16) & 0xFF) * 52 / 256;
+         unsigned g = ((c >>  8) & 0xFF) * 52 / 256;
+         unsigned b = ( c        & 0xFF) * 52 / 256;
+         uint32_t target_idx = total_pixels - 1 - px;
+         draw_buf[target_idx] = 0xFF000000u | (r << 16) | (g << 8) | b;
       }
    }
    else
