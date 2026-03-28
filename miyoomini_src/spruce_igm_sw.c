@@ -529,7 +529,7 @@ static void igm_handle_input(uint32_t *draw_buf,
    {
       igm.deferred_close = IGM_RESUME;
       igm.active = false;
-      memset(draw_buf, 0, width * height * sizeof(uint32_t));
+      //memset(draw_buf, 0, width * height * sizeof(uint32_t));
       return;
    }
 
@@ -543,7 +543,7 @@ static void igm_handle_input(uint32_t *draw_buf,
             break;
          case IGM_RESUME:
             igm.deferred_close = igm.selected;
-            memset(draw_buf, 0, width * height * sizeof(uint32_t));
+            //memset(draw_buf, 0, width * height * sizeof(uint32_t));
             igm.active = false;
             break;
          default:
