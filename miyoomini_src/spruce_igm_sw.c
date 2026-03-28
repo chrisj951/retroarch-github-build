@@ -500,7 +500,8 @@ void spruce_igm_sw_process_pending(void)
 
 /* ── Input handling ────────────────────────────────────────── */
 
-static void igm_handle_input(void)
+static void igm_handle_input(uint32_t *draw_buf,
+      unsigned width, unsigned height)
 {
    uint16_t cur  = igm_read_buttons();
    uint16_t prev = igm.prev_buttons;
@@ -551,6 +552,7 @@ static void igm_handle_input(void)
    if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_B))
    {
       igm.deferred_close = IGM_RESUME;
+      memset(draw_buf, 0, width * height * sizeof(uint32_t));
       return;
    }
 
@@ -561,6 +563,9 @@ static void igm_handle_input(void)
          case IGM_SAVE_STATE:
             command_event(CMD_EVENT_SAVE_STATE, NULL);
             igm.preview_slot = IGM_PREVIEW_NO_SLOT;
+            break;
+         case IGM_RESUME:
+            memset(draw_buf, 0, width * height * sizeof(uint32_t));
             break;
          default:
             igm.deferred_close = igm.selected;
@@ -598,7 +603,7 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
    }
 
    /* Handle input */
-   igm_handle_input();
+   igm_handle_input(draw_buf, width, height);
 
    /* Update preview if slot changed */
    igm_update_preview();
