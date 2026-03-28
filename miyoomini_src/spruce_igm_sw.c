@@ -627,9 +627,9 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
       for (px = 0; px < width * height; px++)
       {
          uint32_t c = igm.bg_capture[px];
-         unsigned r = ((c >> 16) & 0xFF) * 13 / 256;
-         unsigned g = ((c >>  8) & 0xFF) * 13 / 256;
-         unsigned b = ( c        & 0xFF) * 13 / 256;
+         unsigned r = ((c >> 16) & 0xFF) * 52 / 256;
+         unsigned g = ((c >>  8) & 0xFF) * 52 / 256;
+         unsigned b = ( c        & 0xFF) * 52 / 256;
          draw_buf[px] = 0xFF000000u | (r << 16) | (g << 8) | b;
       }
    }
