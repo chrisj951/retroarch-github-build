@@ -1,3 +1,29 @@
+diff --git a/gfx/video_driver.c b/gfx/video_driver.c
+--- a/gfx/video_driver.c
++++ b/gfx/video_driver.c
+@@ -38,6 +38,9 @@
+ #ifdef HAVE_GFX_WIDGETS
+ #include "gfx_widgets.h"
+ #endif
++#ifdef HAVE_SPRUCE_IGM_SW
++#include "../spruce_igm_sw.h"
++#endif
+
+ #ifdef HAVE_THREADS
+ #include "video_thread_wrapper.h"
+@@ -4088,7 +4091,11 @@
+             pitch, runloop_idle);
+
+ #ifdef HAVE_VIDEO_FILTER
+-   if (render_frame && data && video_st->state_filter)
++   if (render_frame && data && video_st->state_filter
++#ifdef HAVE_SPRUCE_IGM_SW
++         && !spruce_igm_sw_is_active()
++#endif
++      )
+    {
+       unsigned output_width                             = 0;
+       unsigned output_height                            = 0;
 diff --git a/runloop.c b/runloop.c
 index 679517b..17172ff 100644
 --- a/runloop.c

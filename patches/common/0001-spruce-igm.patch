@@ -51,6 +51,32 @@ index 17d4b94..bfc4a87 100644
     /* Font setup */
     font_driver_bind_block(p_dispwidget->gfx_widget_fonts.regular.font,
           &p_dispwidget->gfx_widget_fonts.regular.raster_block);
+diff --git a/gfx/video_driver.c b/gfx/video_driver.c
+--- a/gfx/video_driver.c
++++ b/gfx/video_driver.c
+@@ -38,6 +38,9 @@
+ #ifdef HAVE_GFX_WIDGETS
+ #include "gfx_widgets.h"
+ #endif
++#ifdef HAVE_SPRUCE_IGM
++#include "../spruce_igm.h"
++#endif
+
+ #ifdef HAVE_THREADS
+ #include "video_thread_wrapper.h"
+@@ -4088,7 +4091,11 @@
+             pitch, runloop_idle);
+
+ #ifdef HAVE_VIDEO_FILTER
+-   if (render_frame && data && video_st->state_filter)
++   if (render_frame && data && video_st->state_filter
++#ifdef HAVE_SPRUCE_IGM
++         && !spruce_igm_is_active()
++#endif
++      )
+    {
+       unsigned output_width                             = 0;
+       unsigned output_height                            = 0;
 diff --git a/retroarch.c b/retroarch.c
 index b167283..9128500 100644
 --- a/retroarch.c
