@@ -72,7 +72,7 @@ rm -f "$SYSROOT/usr/lib/libfontconfig"* "$SYSROOT/usr/lib/pkgconfig/fontconfig.p
     --enable-neon
 
 # Build
-make HAVE_STATIC_VIDEO_FILTERS=1 -j$(nproc)
+make HAVE_STATIC_VIDEO_FILTERS=1 HAVE_STATIC_AUDIO_FILTERS=1 -j$(nproc)
 
 # Output
 mkdir -p "$OUTPUT_DIR"
