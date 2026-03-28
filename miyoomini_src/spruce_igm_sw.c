@@ -475,7 +475,6 @@ void spruce_igm_sw_process_pending(void)
 
    if (!igm.was_paused) {
       command_event(CMD_EVENT_UNPAUSE, NULL);
-      command_event(CMD_EVENT_REINIT, NULL);
    }
    menu_state_get_ptr()->input_driver_flushing_input = 2;
 
@@ -643,7 +642,7 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
       int batt_tw, batt_x, batt_y;
       snprintf(batt_buf, sizeof(batt_buf), "%d%%", igm.battery_level);
       batt_tw = text_width(batt_buf);
-      batt_x  = (int)width - margin*3 - batt_tw;
+      batt_x  = (int)width - margin*5 - batt_tw;
       batt_y  = margin*2;
       draw_text(draw_buf, pitch, width, height,
             batt_x, batt_y, batt_buf, COL_TEXT, font);
