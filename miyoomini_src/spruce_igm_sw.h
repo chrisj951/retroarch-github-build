@@ -5,8 +5,6 @@
 #include <stdint.h>
 #include "gfx/drivers_font_renderer/bitmap.h"
 
-void spruce_igm_notify_close(uint32_t *draw_buf, unsigned width, unsigned height);
-
 /* Called by the miyoomini video driver each frame while active.
  * draw_buf  : destination pixel buffer (menuscreen, ARGB8888)
  * front_buf : current framebuffer front buffer (for bg capture)

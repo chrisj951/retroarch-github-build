@@ -101,6 +101,8 @@ static void igm_apply_ffw_index(int index)
 
 }
 
+
+
 /* ── Colours (ARGB8888) ────────────────────────────────────── */
 
 #define COL_TEXT        0xFFBDAD91u
@@ -133,6 +135,28 @@ static struct
    unsigned    preview_h;
    int         preview_slot;
 } igm;
+
+
+uint32_t *cached_draw_buf = NULL;
+unsigned cached_width = 0;
+unsigned cached_height = 0;
+void spruce_igm_notify_close()
+{
+      if(NULL != cached_draw_buf){
+         if (igm.bg_capture)
+         {
+            memcpy(cached_draw_buf, igm.bg_capture, cached_width * cached_height * sizeof(uint32_t));
+            free(igm.bg_capture);
+            igm.bg_capture = NULL;
+         } else {
+            // Clear the draw buffer (fill with black)
+            memset(cached_draw_buf, 0, cached_width * cached_height * sizeof(uint32_t));
+         }
+
+         cached_draw_buf = NULL;
+      }
+
+}
 
 #define IGM_PREVIEW_NO_SLOT -999
 
@@ -388,6 +412,8 @@ void spruce_igm_sw_toggle(void)
 {
    if (igm.active)
    {
+      spruce_igm_notify_close();
+
       igm.active         = false;
       igm.pending_action = IGM_NO_PENDING;
 
@@ -418,6 +444,7 @@ void spruce_igm_sw_toggle(void)
 
       if (!igm.was_paused)
          command_event(CMD_EVENT_PAUSE, NULL);
+
    }
 }
 
@@ -542,26 +569,16 @@ static void igm_handle_input(void)
    }
 }
 
-void spruce_igm_notify_close(uint32_t *draw_buf, unsigned width, unsigned height)
-{
-      if (igm.bg_capture)
-      {
-         memcpy(draw_buf, igm.bg_capture, width * height * sizeof(uint32_t));
-         free(igm.bg_capture);
-         igm.bg_capture = NULL;
-         igm_unload_preview();  // optional: clear preview when menu closes
-      } else {
-         // Clear the draw buffer (fill with black)
-         memset(draw_buf, 0, width * height * sizeof(uint32_t));
-      }
-}
-
 /* ── Rendering ─────────────────────────────────────────────── */
+
 
 void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
       unsigned width, unsigned height,
       unsigned pitch, bitmapfont_lut_t *font)
 {
+   cached_draw_buf = draw_buf;
+   cached_width = width;
+   cached_height = height;
    int i;
    char slot_buf[64];
    settings_t *settings;
