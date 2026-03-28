@@ -481,8 +481,6 @@ void spruce_igm_sw_process_pending(void)
    switch (action)
    {
       case IGM_RESUME:
-         uint32_t black_pixel = 0; 
-         video_cb(&black_pixel, 1, 1, 4);
          break;
       case IGM_LOAD_STATE:
          command_event(CMD_EVENT_LOAD_STATE, NULL);

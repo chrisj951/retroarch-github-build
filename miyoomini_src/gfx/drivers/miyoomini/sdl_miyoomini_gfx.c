@@ -895,14 +895,18 @@ error:
    return NULL;
 }
 
+static bool menu_was_alive_last_frame = false;
+
 static bool sdl_miyoomini_gfx_frame(void *data, const void *frame,
       unsigned width, unsigned height, uint64_t frame_count,
       unsigned pitch, const char *msg, video_frame_info_t *video_info) {
    sdl_miyoomini_video_t* vid = (sdl_miyoomini_video_t*)data;
 #ifdef HAVE_MENU
    bool menu_is_alive      = (video_info->menu_st_flags & MENU_ST_FLAG_ALIVE) ? true : false;
-#endif
-
+#endif   
+   if(menu_is_alive){
+      menu_was_alive_last_frame = true;
+   }
    /* Return early if:
     * - Input sdl_miyoomini_video_t struct is NULL
     *   (cannot realistically happen)
@@ -928,7 +932,11 @@ static bool sdl_miyoomini_gfx_frame(void *data, const void *frame,
                vid->igm_surface->pitch / sizeof(uint32_t),
                vid->osd_font);
          GFX_Flip(vid->igm_surface);
-      }
+      } else if(menu_was_alive_last_frame){
+         menu_was_alive_last_frame = false;
+         // Clear the draw buffer (fill with black)
+         memset(vid->igm_surface->pixels, 0, res_x * res_y * sizeof(uint32_t));
+      } 
 #endif
       return true;
    }
