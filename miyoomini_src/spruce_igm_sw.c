@@ -22,6 +22,7 @@
 #include "menu/menu_driver.h"
 #include <formats/image.h>
 #include <gfx/scaler/scaler.h>
+#include <math.h>
 
 /* ── Menu item definitions ─────────────────────────────────── */
 
@@ -30,6 +31,7 @@ enum spruce_igm_sw_item
    IGM_RESUME = 0,
    IGM_SAVE_STATE,
    IGM_LOAD_STATE,
+   IGM_FFW_SPEED,
    IGM_RESET,
    IGM_RETROARCH,
    IGM_EXIT,
@@ -40,10 +42,65 @@ static const char *igm_labels[IGM_ITEM_COUNT] = {
    "Resume",
    "Save",
    "Load",
+   "FFW",
    "Reset",
-   "RetroArch Menu",
-   "Exit Game"
+   "RA Menu",
+   "Exit RA"
 };
+
+typedef struct
+{
+   float ratio;
+   bool  unlimited;
+} igm_ffw_entry_t;
+
+static const igm_ffw_entry_t igm_ffw_table[] = {
+   {1.5f, false},
+   {2.0f, false},
+   {2.5f, false},
+   {3.0f, false},
+   {0.0f, true}    /* unlimited */
+};
+#define IGM_FFW_COUNT (sizeof(igm_ffw_table)/sizeof(igm_ffw_table[0]))
+
+static int igm_find_ffw_index(void)
+{
+    settings_t *settings = config_get_ptr();
+    float ratio = settings->floats.fastforward_ratio;
+
+    for (size_t i = 0; i < IGM_FFW_COUNT; i++)
+    {
+        if (igm_ffw_table[i].unlimited)
+        {
+            // unlimited is represented by ratio 0
+            if (ratio == 0.0f)
+                return (int)i;
+        }
+        else
+        {
+            if (fabsf(igm_ffw_table[i].ratio - ratio) < 0.01f)
+                return (int)i;
+        }
+    }
+
+    return 0; /* fallback */
+}
+
+static void igm_apply_ffw_index(int index)
+{
+    settings_t *settings = config_get_ptr();
+
+    /* Wrap around the table */
+    index = (index + IGM_FFW_COUNT) % IGM_FFW_COUNT;
+
+    const igm_ffw_entry_t *entry = &igm_ffw_table[index];
+
+    /* Apply fast-forward ratio and throttle/unlimited */
+    settings->floats.fastforward_ratio = entry->ratio;
+
+}
+
+
 
 /* ── Colours (ARGB8888) ────────────────────────────────────── */
 
@@ -158,11 +215,11 @@ static int draw_char(uint32_t *buf, unsigned pitch,
    bool *lut;
 
    if (!font || symbol >= font->glyph_max)
-      return FONT_WIDTH_STRIDE * 2;
+      return FONT_WIDTH_STRIDE * 3;
 
    lut = font->lut[symbol];
    if (!lut)
-      return FONT_WIDTH_STRIDE * 2;
+      return FONT_WIDTH_STRIDE * 3;
 
    for (j = 0; j < FONT_HEIGHT; j++)
    {
@@ -170,20 +227,27 @@ static int draw_char(uint32_t *buf, unsigned pitch,
       {
          if (lut[i + j * FONT_WIDTH])
          {
-            int px = x + i * 2;
-            int py = y + j * 2;
+            int px = x + i * 3;
+            int py = y + j * 3;
             if (px >= 0 && px + 1 < (int)scr_w &&
                 py >= 0 && py + 1 < (int)scr_h)
             {
                buf[(py    ) * pitch + px    ] = color;
                buf[(py    ) * pitch + px + 1] = color;
+               buf[(py    ) * pitch + px + 2] = color;
+
                buf[(py + 1) * pitch + px    ] = color;
                buf[(py + 1) * pitch + px + 1] = color;
+               buf[(py + 1) * pitch + px + 2] = color;
+
+               buf[(py + 2) * pitch + px    ] = color;
+               buf[(py + 2) * pitch + px + 1] = color;
+               buf[(py + 2) * pitch + px + 2] = color;
             }
          }
       }
    }
-   return FONT_WIDTH_STRIDE * 2;
+   return FONT_WIDTH_STRIDE * 3;
 }
 
 static void draw_text(uint32_t *buf, unsigned pitch,
@@ -355,6 +419,7 @@ void spruce_igm_sw_toggle(void)
 
       if (!igm.was_paused)
          command_event(CMD_EVENT_PAUSE, NULL);
+
    }
 }
 
@@ -383,9 +448,9 @@ void spruce_igm_sw_process_pending(void)
    }
    igm_unload_preview();
 
-   if (!igm.was_paused)
+   if (!igm.was_paused) {
       command_event(CMD_EVENT_UNPAUSE, NULL);
-
+   }
    menu_state_get_ptr()->input_driver_flushing_input = 2;
 
    switch (action)
@@ -410,7 +475,8 @@ void spruce_igm_sw_process_pending(void)
 
 /* ── Input handling ────────────────────────────────────────── */
 
-static void igm_handle_input(void)
+static bool igm_handle_input(uint32_t *draw_buf,
+      unsigned width, unsigned height)
 {
    uint16_t cur  = igm_read_buttons();
    uint16_t prev = igm.prev_buttons;
@@ -424,7 +490,11 @@ static void igm_handle_input(void)
          igm.pending_action = igm.deferred_close;
          igm.deferred_close = IGM_NO_PENDING;
       }
-      return;
+      for (unsigned px = 0; px < width * height; px++) {
+         draw_buf[px] = 0xFF000000u;
+      }
+
+      return false;
    }
 
    if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_UP))
@@ -447,12 +517,24 @@ static void igm_handle_input(void)
          command_event(CMD_EVENT_SAVE_STATE_DECREMENT, NULL);
       if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_RIGHT))
          command_event(CMD_EVENT_SAVE_STATE_INCREMENT, NULL);
+   } else if(igm.selected == IGM_FFW_SPEED){
+        //FFW speeds = [1.5, 2, 3, Unlimited]
+        int ffw_index = igm_find_ffw_index();
+        if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_LEFT)){
+            igm_apply_ffw_index(ffw_index  - 1);
+        } else if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_RIGHT)){
+            igm_apply_ffw_index(ffw_index  + 1);
+        }
+
    }
 
    if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_B))
    {
       igm.deferred_close = IGM_RESUME;
-      return;
+      for (unsigned px = 0; px < width * height; px++) {
+         draw_buf[px] = 0xFF000000u;
+      }
+      return false;
    }
 
    if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_A))
@@ -463,14 +545,23 @@ static void igm_handle_input(void)
             command_event(CMD_EVENT_SAVE_STATE, NULL);
             igm.preview_slot = IGM_PREVIEW_NO_SLOT;
             break;
+         case IGM_RESUME:
+            igm.deferred_close = igm.selected;
+            for (unsigned px = 0; px < width * height; px++) {
+               draw_buf[px] = 0xFF000000u;
+            }
+            return false;
          default:
             igm.deferred_close = igm.selected;
-            return;
       }
    }
+
+   return true;
+   
 }
 
 /* ── Rendering ─────────────────────────────────────────────── */
+
 
 void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
       unsigned width, unsigned height,
@@ -480,9 +571,9 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
    char slot_buf[64];
    settings_t *settings;
 
-   if (!igm.active)
+   if (!igm.active) {
       return;
-
+   }
    /* Capture background on first frame */
    if (igm.needs_bg_capture)
    {
@@ -495,8 +586,9 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
    }
 
    /* Handle input */
-   igm_handle_input();
-
+   if(!igm_handle_input(draw_buf, width, height)) {
+      return;
+   }
    /* Update preview if slot changed */
    igm_update_preview();
 
@@ -519,13 +611,21 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
    if (igm.bg_capture)
    {
       unsigned px;
-      for (px = 0; px < width * height; px++)
+      uint32_t total_pixels = width * height;
+
+      for (px = 0; px < total_pixels; px++)
       {
          uint32_t c = igm.bg_capture[px];
-         unsigned r = ((c >> 16) & 0xFF) * 13 / 256;
-         unsigned g = ((c >>  8) & 0xFF) * 13 / 256;
-         unsigned b = ( c        & 0xFF) * 13 / 256;
-         draw_buf[px] = 0xFF000000u | (r << 16) | (g << 8) | b;
+         
+         // Your existing color processing logic
+         unsigned r = ((c >> 16) & 0xFF) * 52 / 256;
+         unsigned g = ((c >>  8) & 0xFF) * 52 / 256;
+         unsigned b = ( c        & 0xFF) * 52 / 256;
+         
+         // Calculate the inverted index for 180-degree rotation
+         uint32_t target_idx = total_pixels - 1 - px;
+         
+         draw_buf[target_idx] = 0xFF000000u | (r << 16) | (g << 8) | b;
       }
    }
    else
@@ -538,15 +638,15 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
       int batt_tw, batt_x, batt_y;
       snprintf(batt_buf, sizeof(batt_buf), "%d%%", igm.battery_level);
       batt_tw = text_width(batt_buf);
-      batt_x  = (int)width - margin - batt_tw;
-      batt_y  = margin;
+      batt_x  = (int)width - margin*5 - batt_tw;
+      batt_y  = margin*2;
       draw_text(draw_buf, pitch, width, height,
             batt_x, batt_y, batt_buf, COL_TEXT, font);
    }
 
    /* ── Title ───────────────────────────────────────── */
    {
-      const char *title = "spruceOS Menu";
+      const char *title = "Menu";
       int tw = text_width(title);
       int tx = text_cx - tw / 2;
       int ty = panel_y + (title_h - glyph_h) / 2;
@@ -591,9 +691,17 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
             snprintf(slot_buf, sizeof(slot_buf), "%s Auto",
                   igm_labels[i]);
          else
-            snprintf(slot_buf, sizeof(slot_buf), "%s Slot %d",
+            snprintf(slot_buf, sizeof(slot_buf), "%s %d",
                   igm_labels[i], slot);
          label = slot_buf;
+      } else if (i == IGM_FFW_SPEED){
+            if(settings->floats.fastforward_ratio > 1.0){
+                snprintf(slot_buf, sizeof(slot_buf), "%s %.1fx", igm_labels[i], settings->floats.fastforward_ratio);                
+            } else {
+                snprintf(slot_buf, sizeof(slot_buf), "%s U",
+                    igm_labels[i]);
+            }
+            label = slot_buf;
       }
       else
          label = igm_labels[i];
@@ -607,15 +715,15 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
             tx, ty, label, text_col, font);
 
       /* Arrows for Save/Load rows */
-      if (i == IGM_SAVE_STATE || i == IGM_LOAD_STATE)
+      if (i == IGM_SAVE_STATE || i == IGM_LOAD_STATE || i == IGM_FFW_SPEED)
       {
          int arrow_y = iy + (item_h - glyph_h) / 2;
          draw_text(draw_buf, pitch, width, height,
-               panel_x + panel_w / 10, arrow_y, "<",
+               panel_x + panel_w / 9, arrow_y, "<",
                selected ? COL_TEXT_SEL : COL_TEXT, font);
          draw_text(draw_buf, pitch, width, height,
-               panel_x + panel_w - panel_w / 10 - text_width(">"),
-               arrow_y, ">",
+               panel_x + panel_w - panel_w / 9 - text_width(">"),
+               arrow_y, "  >",
                selected ? COL_TEXT_SEL : COL_TEXT, font);
       }
    }
