@@ -481,6 +481,8 @@ void spruce_igm_sw_process_pending(void)
    switch (action)
    {
       case IGM_RESUME:
+         command_event(CMD_EVENT_MENU_TOGGLE, NULL);
+         command_event(CMD_EVENT_MENU_TOGGLE, NULL);
          break;
       case IGM_LOAD_STATE:
          command_event(CMD_EVENT_LOAD_STATE, NULL);
