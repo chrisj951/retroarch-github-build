@@ -629,8 +629,6 @@ static void sdl_miyoomini_gfx_free(void *data) {
    if (vid->menuscreen) GFX_FreeSurface(vid->menuscreen);
    if (vid->menuscreen_rgui) GFX_FreeSurface(vid->menuscreen_rgui);
 #ifdef HAVE_SPRUCE_IGM_SW
-   uint32_t *draw_buf = (uint32_t *)vid->igm_surface->pixels; // raw framebuffer pointer
-   spruce_igm_notify_close(draw_buf, vid->video_w, vid->video_h);
    if (vid->igm_surface){
       GFX_FreeSurface(vid->igm_surface);
    }
@@ -973,6 +971,8 @@ static bool sdl_miyoomini_gfx_frame(void *data, const void *frame,
          sdl_miyoomini_clear_border(fb_addr, vid->video_x, vid->video_y, vid->video_w, vid->video_h);
          vid->was_in_menu = false;
          stOpt.eRotate = vid->rotate;
+         uint32_t *draw_buf = (uint32_t *)vid->igm_surface->pixels; // raw framebuffer pointer
+         spruce_igm_notify_close(draw_buf, vid->video_w, vid->video_h);
       }
       /* Update video mode if width/height have changed */
       if (unlikely( (vid->content_width  != width ) ||
