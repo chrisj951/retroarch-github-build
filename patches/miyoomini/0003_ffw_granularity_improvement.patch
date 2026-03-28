@@ -1,8 +1,8 @@
 diff --git a/runloop.c b/runloop.c
-index 679517b..699a846 100644
+index 679517b..0ea85e0 100644
 --- a/runloop.c
 +++ b/runloop.c
-@@ -7495,18 +7495,20 @@ end:
+@@ -7495,18 +7495,24 @@ end:
        {
           unsigned               sleep_ms = (unsigned)to_sleep_ms;
 
@@ -16,14 +16,18 @@ index 679517b..699a846 100644
              if (!(uico_state_get_ptr()->flags & UICO_ST_FLAG_IS_ON_FOREGROUND))
  #endif
 -               retro_sleep(sleep_ms);
+-         }
 +               const retro_time_t target_time = runloop_st->frame_limit_last_time +
 +                                                runloop_st->frame_limit_minimum_time;
+
++               if(sleep_ms > 12){
++                  retro_sleep(sleep_ms - 11);
++               }
 +               while (cpu_features_get_time_usec() < target_time)
 +               {
 +                   /* busy wait */
 +               }
-          }
--
++         }
 +         runloop_st->frame_limit_last_time += runloop_st->frame_limit_minimum_time;
           return 1;
        }
