@@ -565,6 +565,7 @@ static void igm_handle_input(uint32_t *draw_buf,
             igm.preview_slot = IGM_PREVIEW_NO_SLOT;
             break;
          case IGM_RESUME:
+            igm.deferred_close = igm.selected;
             memset(draw_buf, 0, width * height * sizeof(uint32_t));
             break;
          default:
@@ -604,7 +605,9 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
 
    /* Handle input */
    igm_handle_input(draw_buf, width, height);
-
+   if(igm.deferred_close == IGM_RESUME){
+      return;
+   }
    /* Update preview if slot changed */
    igm_update_preview();
 
