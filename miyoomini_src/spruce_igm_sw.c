@@ -552,6 +552,7 @@ static void igm_handle_input(uint32_t *draw_buf,
    if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_B))
    {
       igm.deferred_close = IGM_RESUME;
+      igm.active = false;
       memset(draw_buf, 0, width * height * sizeof(uint32_t));
       return;
    }
@@ -567,6 +568,7 @@ static void igm_handle_input(uint32_t *draw_buf,
          case IGM_RESUME:
             igm.deferred_close = igm.selected;
             memset(draw_buf, 0, width * height * sizeof(uint32_t));
+            igm.active = false;
             break;
          default:
             igm.deferred_close = igm.selected;
