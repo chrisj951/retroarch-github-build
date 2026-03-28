@@ -552,9 +552,6 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
       unsigned width, unsigned height,
       unsigned pitch, bitmapfont_lut_t *font)
 {
-   cached_draw_buf = draw_buf;
-   cached_width = width;
-   cached_height = height;
    int i;
    char slot_buf[64];
    settings_t *settings;
