@@ -136,28 +136,6 @@ static struct
    int         preview_slot;
 } igm;
 
-
-uint32_t *cached_draw_buf = NULL;
-unsigned cached_width = 0;
-unsigned cached_height = 0;
-void spruce_igm_notify_close()
-{
-      if(NULL != cached_draw_buf){
-         if (igm.bg_capture)
-         {
-            memcpy(cached_draw_buf, igm.bg_capture, cached_width * cached_height * sizeof(uint32_t));
-            free(igm.bg_capture);
-            igm.bg_capture = NULL;
-         } else {
-            // Clear the draw buffer (fill with black)
-            memset(cached_draw_buf, 0, cached_width * cached_height * sizeof(uint32_t));
-         }
-
-         cached_draw_buf = NULL;
-      }
-
-}
-
 #define IGM_PREVIEW_NO_SLOT -999
 
 /* ── Helpers ───────────────────────────────────────────────── */
@@ -412,8 +390,6 @@ void spruce_igm_sw_toggle(void)
 {
    if (igm.active)
    {
-      spruce_igm_notify_close();
-
       igm.active         = false;
       igm.pending_action = IGM_NO_PENDING;
 
