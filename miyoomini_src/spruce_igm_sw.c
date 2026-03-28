@@ -23,6 +23,8 @@
 #include <formats/image.h>
 #include <gfx/scaler/scaler.h>
 #include <math.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 /* ── Menu item definitions ─────────────────────────────────── */
 
@@ -133,6 +135,7 @@ static struct
    unsigned    preview_w;
    unsigned    preview_h;
    int         preview_slot;
+   char        state_path[8192];     /* slot loaded, or IGM_PREVIEW_NO_SLOT */
 } igm;
 
 #define IGM_PREVIEW_NO_SLOT -999
@@ -284,22 +287,22 @@ static void igm_unload_preview(void)
 
 static void igm_load_preview(int slot)
 {
-   char state_path[8192];
+   igm.state_path[0] = '\0';
    size_t len;
    struct texture_image ti = {0};
 
    igm_unload_preview();
 
-   if (!runloop_get_savestate_path(state_path, sizeof(state_path), slot))
+   if (!runloop_get_savestate_path(igm.state_path, sizeof(igm.state_path), slot))
       return;
 
-   len = strlen(state_path);
-   snprintf(state_path + len, sizeof(state_path) - len, ".png");
+   len = strlen(igm.state_path);
+   snprintf(igm.state_path + len, sizeof(igm.state_path) - len, ".png");
 
-   if (access(state_path, F_OK) != 0)
+   if (access(igm.state_path, F_OK) != 0)
       return;
 
-   if (!image_texture_load(&ti, state_path))
+   if (!image_texture_load(&ti, igm.state_path))
       return;
 
    igm.preview_pixels = ti.pixels;
@@ -308,12 +311,43 @@ static void igm_load_preview(int slot)
    igm.preview_slot   = slot;
 }
 
+static time_t igm_preview_mtime = 0;  /* last known mtime of PNG */
+static off_t  igm_preview_size  = 0;  /* last known size of PNG */
+
 static void igm_update_preview(void)
 {
-   settings_t *settings = config_get_ptr();
-   int slot = settings->ints.state_slot;
-   if (slot != igm.preview_slot)
-      igm_load_preview(slot);
+    settings_t *settings = config_get_ptr();
+    int slot = settings->ints.state_slot;
+    struct stat st;
+    bool reload = false;
+
+    /* Reload if slot changed or state_path not yet set */
+    if (slot != igm.preview_slot || igm.state_path[0] == '\0')
+        reload = true;
+    else if (stat(igm.state_path, &st) == 0)
+    {
+        /* Reload if the PNG file has been updated or size changed */
+        if (st.st_mtime != igm_preview_mtime || st.st_size != igm_preview_size)
+            reload = true;
+    }
+
+    if (!reload)
+        return;
+
+    /* Load preview */
+    igm_load_preview(slot);
+
+    /* Update mtime and size only if file exists and has size > 0 */
+    if (stat(igm.state_path, &st) == 0 && st.st_size > 0)
+    {
+        igm_preview_mtime = st.st_mtime;
+        igm_preview_size  = st.st_size;
+    }
+    else
+    {
+        igm_preview_mtime = 0;
+        igm_preview_size  = 0;
+    }
 }
 
 static void igm_draw_preview(uint32_t *buf, unsigned pitch,
@@ -415,6 +449,7 @@ void spruce_igm_sw_toggle(void)
       igm.prev_buttons     = 0xFFFF;
       igm.needs_bg_capture = true;
       igm.preview_slot     = IGM_PREVIEW_NO_SLOT;
+      igm.state_path[0]    = '\0';
       igm.battery_level    = dingux_get_battery_level();
 
       if (!igm.was_paused)
