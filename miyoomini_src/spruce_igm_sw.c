@@ -473,16 +473,16 @@ void spruce_igm_sw_process_pending(void)
    }
    igm_unload_preview();
 
-   if (!igm.was_paused)
+   if (!igm.was_paused) {
       command_event(CMD_EVENT_UNPAUSE, NULL);
-
+      command_event(CMD_EVENT_REINIT, NULL);
+   }
    menu_state_get_ptr()->input_driver_flushing_input = 2;
 
    switch (action)
    {
       case IGM_RESUME:
-         command_event(CMD_EVENT_MENU_TOGGLE, NULL);
-         command_event(CMD_EVENT_MENU_TOGGLE, NULL);
+         command_event(CMD_EVENT_REINIT, NULL);
          break;
       case IGM_LOAD_STATE:
          command_event(CMD_EVENT_LOAD_STATE, NULL);
