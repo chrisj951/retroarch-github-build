@@ -55,7 +55,6 @@ typedef struct
 } igm_ffw_entry_t;
 
 static const igm_ffw_entry_t igm_ffw_table[] = {
-   {1.0f, false},  /* optional: normal speed */
    {1.5f, false},
    {2.0f, false},
    {2.5f, false},
@@ -639,7 +638,7 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
       int batt_tw, batt_x, batt_y;
       snprintf(batt_buf, sizeof(batt_buf), "%d%%", igm.battery_level);
       batt_tw = text_width(batt_buf);
-      batt_x  = (int)width - margin*5 - batt_tw;
+      batt_x  = (int)width - margin*5 - ba tt_tw;
       batt_y  = margin*2;
       draw_text(draw_buf, pitch, width, height,
             batt_x, batt_y, batt_buf, COL_TEXT, font);

@@ -129,7 +129,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/spruce_igm.c
-@@ -0,0 +1,686 @@
+@@ -0,0 +1,685 @@
 +/*
 + * Spruce IGM - Simple in-game menu for spruceOS handhelds
 + *
@@ -485,7 +485,6 @@ index 0000000..0000000
 +} igm_ffw_entry_t;
 +
 +static const igm_ffw_entry_t igm_ffw_table[] = {
-+   {1.0f, false},  /* optional: normal speed */
 +   {1.5f, false},
 +   {2.0f, false},
 +   {2.5f, false},
