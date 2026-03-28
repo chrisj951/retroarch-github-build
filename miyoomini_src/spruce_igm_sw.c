@@ -476,7 +476,7 @@ void spruce_igm_sw_process_pending(void)
 
 /* ── Input handling ────────────────────────────────────────── */
 
-static void igm_handle_input(uint32_t *draw_buf,
+static bool igm_handle_input(uint32_t *draw_buf,
       unsigned width, unsigned height)
 {
    uint16_t cur  = igm_read_buttons();
@@ -491,7 +491,11 @@ static void igm_handle_input(uint32_t *draw_buf,
          igm.pending_action = igm.deferred_close;
          igm.deferred_close = IGM_NO_PENDING;
       }
-      return;
+      for (unsigned px = 0; px < width * height; px++) {
+         draw_buf[px] = 0xFF000000u;
+      }
+
+      return false;
    }
 
    if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_UP))
@@ -528,9 +532,10 @@ static void igm_handle_input(uint32_t *draw_buf,
    if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_B))
    {
       igm.deferred_close = IGM_RESUME;
-      igm.active = false;
-      //memset(draw_buf, 0, width * height * sizeof(uint32_t));
-      return;
+      for (unsigned px = 0; px < width * height; px++) {
+         draw_buf[px] = 0xFF000000u;
+      }
+      return false;
    }
 
    if (IGM_PRESSED(cur, prev, RETRO_DEVICE_ID_JOYPAD_A))
@@ -543,14 +548,17 @@ static void igm_handle_input(uint32_t *draw_buf,
             break;
          case IGM_RESUME:
             igm.deferred_close = igm.selected;
-            //memset(draw_buf, 0, width * height * sizeof(uint32_t));
-            igm.active = false;
-            break;
+            for (unsigned px = 0; px < width * height; px++) {
+               draw_buf[px] = 0xFF000000u;
+            }
+            return false;
          default:
             igm.deferred_close = igm.selected;
-            return;
       }
    }
+
+   return true;
+   
 }
 
 /* ── Rendering ─────────────────────────────────────────────── */
@@ -579,8 +587,7 @@ void spruce_igm_sw_frame(uint32_t *draw_buf, const uint32_t *front_buf,
    }
 
    /* Handle input */
-   igm_handle_input(draw_buf, width, height);
-   if(igm.deferred_close == IGM_RESUME){
+   if(!igm_handle_input(draw_buf, width, height)) {
       return;
    }
    /* Update preview if slot changed */
