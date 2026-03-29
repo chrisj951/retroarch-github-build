@@ -61,14 +61,9 @@ jobs:
             -v ${{ github.workspace }}/ccache-pixel2:/ccache \
             ra-builder-pixel2
 
-      - name: Upload binary and filters
+      - name: Upload binary
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mv output/retroarch output/ra64.pixel2
           gh release upload "latest" output/ra64.pixel2 --clobber
-
-          cd output/filters
-          tar czf ../../pixel2-filters.tar.gz video/ audio/
-          cd ../..
-          gh release upload "latest" pixel2-filters.tar.gz --clobber

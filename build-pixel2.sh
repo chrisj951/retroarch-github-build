@@ -32,7 +32,7 @@ if [ -d /patches/pixel2 ] && ls /patches/pixel2/*.patch 1>/dev/null 2>&1; then
 fi
 
 # Configure — Hario's exact flags for Pixel2 (RK3566 / Mali-G52)
-CFLAGS="-Ofast -march=armv8-a -mtune=cortex-a35 -fomit-frame-pointer -DNDEBUG" \
+CFLAGS="-Ofast -march=armv8-a -mtune=cortex-a35 -fomit-frame-pointer -DNDEBUG -DHAVE_FILTERS_BUILTIN" \
 ./configure --disable-qt \
             --disable-discord \
             --disable-neon \
@@ -59,24 +59,12 @@ CFLAGS="-Ofast -march=armv8-a -mtune=cortex-a35 -fomit-frame-pointer -DNDEBUG" \
             --enable-opengl
 
 # Build
-make -j$(nproc)
+make HAVE_STATIC_VIDEO_FILTERS=1 HAVE_STATIC_AUDIO_FILTERS=1 -j$(nproc)
 strip retroarch
-
-# Build filters as external .so plugins
-FILTER_CFLAGS="-Ofast -march=armv8-a -mtune=cortex-a35 -fomit-frame-pointer -DNDEBUG"
-make -C gfx/video_filters extra_flags="$FILTER_CFLAGS"
-make -C libretro-common/audio/dsp_filters extra_flags="$FILTER_CFLAGS"
-strip gfx/video_filters/*.so
-strip libretro-common/audio/dsp_filters/*.so
 
 # Output binary
 mkdir -p "$OUTPUT_DIR"
 cp retroarch "$OUTPUT_DIR/"
-
-# Output filters
-mkdir -p "$OUTPUT_DIR/filters/video" "$OUTPUT_DIR/filters/audio"
-cp gfx/video_filters/*.so gfx/video_filters/*.filt "$OUTPUT_DIR/filters/video/"
-cp libretro-common/audio/dsp_filters/*.so libretro-common/audio/dsp_filters/*.dsp "$OUTPUT_DIR/filters/audio/"
 
 echo "=== ccache stats ==="
 ccache --show-stats
