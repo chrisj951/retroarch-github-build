@@ -70,6 +70,6 @@ make HAVE_STATIC_VIDEO_FILTERS=1 HAVE_STATIC_AUDIO_FILTERS=1 -j$(nproc)
 # Output
 mkdir -p "$OUTPUT_DIR"
 cp retroarch "$OUTPUT_DIR/"
-aarch64-linux-gnu-strip "$OUTPUT_DIR/retroarch"
+aarch64-linux-gnu-strip -s "$OUTPUT_DIR/retroarch"
 
 echo "=== Build complete: ${OUTPUT_DIR}/retroarch ==="

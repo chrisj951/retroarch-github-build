@@ -70,7 +70,7 @@ LDFLAGS="$LDFLAGS" \
 
 # Build
 make HAVE_STATIC_VIDEO_FILTERS=1 HAVE_STATIC_AUDIO_FILTERS=1 -j$(nproc)
-strip retroarch
+strip -s retroarch
 
 # Output binary
 mkdir -p "$OUTPUT_DIR"
