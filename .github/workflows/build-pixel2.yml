@@ -6,6 +6,10 @@ on:
       retroarch_ref:
         description: 'RetroArch commit or tag'
         default: 'e5eff6db27cd37c3c318741ee8bb9a3b8b60ec62'
+      rebuild_docker:
+        description: 'Force rebuild Docker image and re-upload'
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       retroarch_ref:
@@ -48,13 +52,39 @@ jobs:
           key: ccache-pixel2-${{ github.sha }}
           restore-keys: ccache-pixel2-
 
+      - name: Try downloading pre-built Docker image
+        id: docker-cache
+        if: ${{ !inputs.rebuild_docker }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release download sdk-toolchains \
+              --repo spruceUI/PPSSPP-spruce \
+              --pattern "pixel2-docker.tar.gz" \
+              --dir . 2>/dev/null; then
+            echo "hit=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hit=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Load cached Docker image
+        if: steps.docker-cache.outputs.hit == 'true'
+        run: gunzip -c pixel2-docker.tar.gz | docker load
+
       - name: Build Docker image
+        if: steps.docker-cache.outputs.hit != 'true'
         run: |
           docker buildx build --platform linux/arm64 \
-            -f Dockerfile.pixel2 -t ra-builder-pixel2 --load \
-            --cache-from type=gha,scope=pixel2-docker \
-            --cache-to type=gha,mode=max,scope=pixel2-docker \
-            .
+            -f Dockerfile.pixel2 -t ra-builder-pixel2 --load .
+
+      - name: Upload Docker image to toolchain release
+        if: steps.docker-cache.outputs.hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          docker save ra-builder-pixel2 | gzip > pixel2-docker.tar.gz
+          gh release upload sdk-toolchains pixel2-docker.tar.gz --clobber \
+            --repo spruceUI/PPSSPP-spruce
 
       - name: Build RetroArch
         run: |
