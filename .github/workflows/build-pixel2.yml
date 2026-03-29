@@ -1,0 +1,65 @@
+name: Build ra64.pixel2
+
+on:
+  workflow_dispatch:
+    inputs:
+      retroarch_ref:
+        description: 'RetroArch commit or tag'
+        default: 'e5eff6db27cd37c3c318741ee8bb9a3b8b60ec62'
+  workflow_call:
+    inputs:
+      retroarch_ref:
+        type: string
+        default: 'e5eff6db27cd37c3c318741ee8bb9a3b8b60ec62'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure latest release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="latest"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" \
+              --target "${{ github.ref_name }}" \
+              --title "Latest Build" \
+              --notes "RetroArch binaries for spruce" \
+            || true
+
+      - name: Set up QEMU for arm64 emulation
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: docker buildx build --platform linux/arm64 -f Dockerfile.pixel2 -t ra-builder-pixel2 --load .
+
+      - name: Build RetroArch
+        run: |
+          mkdir -p output
+          docker run --rm --platform linux/arm64 \
+            -e RETROARCH_REF=${{ github.event.inputs.retroarch_ref || 'e5eff6db27cd37c3c318741ee8bb9a3b8b60ec62' }} \
+            -v ${{ github.workspace }}/output:/output \
+            ra-builder-pixel2
+
+      - name: Upload binary and filters
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv output/retroarch output/ra64.pixel2
+          gh release upload "latest" output/ra64.pixel2 --clobber
+
+          cd output/filters
+          tar czf ../../pixel2-filters.tar.gz video/ audio/
+          cd ../..
+          gh release upload "latest" pixel2-filters.tar.gz --clobber
