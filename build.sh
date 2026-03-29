@@ -31,11 +31,12 @@ export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
 export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig
 
 # Configure for universal aarch64 binary
-# Uses SDL2 + EGL + GLES which works across all GPU vendors (PowerVR, Mali, etc.)
+# Uses SDL2 + EGL + GLES + Vulkan. GLES works on all GPUs; Vulkan is available
+# on devices with Vulkan drivers (e.g. Mali G57 on Smart Pro S).
 ./configure --host=aarch64-linux-gnu \
     --disable-x11 \
     --disable-wayland \
-    --disable-vulkan \
+    --enable-vulkan \
     --disable-opengl \
     --disable-qt \
     --disable-kms \
