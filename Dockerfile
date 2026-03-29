@@ -22,6 +22,7 @@ RUN dpkg --add-architecture arm64 && \
     libgles2-mesa-dev:arm64 \
     libegl1-mesa-dev:arm64 \
     libudev-dev:arm64 \
+    libvulkan-dev:arm64 \
     kmod \
     && rm -rf /var/lib/apt/lists/*
 
