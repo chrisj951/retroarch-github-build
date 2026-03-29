@@ -34,8 +34,15 @@ if [ -d /patches/pixel2 ] && ls /patches/pixel2/*.patch 1>/dev/null 2>&1; then
     done
 fi
 
-# Configure — Hario's exact flags for Pixel2 (RK3566 / Mali-G52)
-CFLAGS="-Ofast -march=armv8-a -mtune=cortex-a35 -fomit-frame-pointer -DNDEBUG -DHAVE_FILTERS_BUILTIN" \
+# Configure — Hario's exact flags for Pixel2 (RK3566 / Mali-G52
+
+export CFLAGS="-Ofast -march=armv8-a -mtune=cortex-a35 -ffunction-sections -fdata-sections -fomit-frame-pointer -flto -DNDEBUG -DHAVE_FILTERS_BUILTIN"
+export CXXFLAGS="$CFLAGS"
+export LDFLAGS="$LDFLAGS -Wl,--gc-sections -flto"
+
+CFLAGS="$CFLAGS" \
+CXXFLAGS="$CXXFLAGS" \
+LDFLAGS="$LDFLAGS" \
 ./configure --disable-qt \
             --disable-discord \
             --disable-neon \

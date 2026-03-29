@@ -37,9 +37,9 @@ export STRIP="${CROSS}-strip"
 export PKG_CONFIG_PATH="$SYSROOT/usr/lib/pkgconfig"
 export PKG_CONFIG_LIBDIR="$SYSROOT/usr/lib/pkgconfig"
 export PKG_CONFIG_SYSROOT_DIR="$SYSROOT"
-export CFLAGS="-O3 --sysroot=$SYSROOT -march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -DHAVE_FILTERS_BUILTIN"
+export CFLAGS="-O3 --sysroot=$SYSROOT -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -fomit-frame-pointer -ffunction-sections -fdata-sections -flto -DHAVE_FILTERS_BUILTIN"
 export CXXFLAGS="$CFLAGS"
-export LDFLAGS="--sysroot=$SYSROOT -L$SYSROOT/usr/lib -static-libstdc++"
+export LDFLAGS="--sysroot=$SYSROOT -L$SYSROOT/usr/lib -Wl,--gc-sections -static-libstdc++ -flto"
 
 # Remove fontconfig from sysroot so configure won't auto-detect it
 # (not present on the A30 device, and drags in libexpat/libpng16)
