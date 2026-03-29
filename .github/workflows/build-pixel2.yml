@@ -59,8 +59,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release download sdk-toolchains \
-              --repo spruceUI/PPSSPP-spruce \
+          if gh release download toolchains \
               --pattern "pixel2-docker.tar.gz" \
               --dir . 2>/dev/null; then
             echo "hit=true" >> "$GITHUB_OUTPUT"
@@ -84,8 +83,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           docker save ra-builder-pixel2 | gzip > pixel2-docker.tar.gz
-          gh release upload sdk-toolchains pixel2-docker.tar.gz --clobber \
-            --repo spruceUI/PPSSPP-spruce
+          gh release upload toolchains pixel2-docker.tar.gz --clobber
 
       - name: Build RetroArch
         run: |
