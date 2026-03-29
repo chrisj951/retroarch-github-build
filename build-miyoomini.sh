@@ -37,6 +37,6 @@ make -f Makefile.miyoomini -j$(nproc)
 # Output
 mkdir -p "$OUTPUT_DIR"
 cp retroarch "$OUTPUT_DIR/"
-/opt/miyoomini-toolchain/usr/bin/arm-linux-gnueabihf-strip "$OUTPUT_DIR/retroarch"
+/opt/miyoomini-toolchain/usr/bin/arm-linux-gnueabihf-strip -s "$OUTPUT_DIR/retroarch"
 
 echo "=== Build complete: ${OUTPUT_DIR}/retroarch ==="
