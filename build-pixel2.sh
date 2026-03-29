@@ -7,6 +7,13 @@ OUTPUT_DIR="${OUTPUT_DIR:-/output}"
 echo "=== Building RetroArch for Pixel2 (aarch64 native) ==="
 echo "=== Ref: ${RETROARCH_REF} ==="
 
+# Set up ccache
+export CCACHE_DIR="${CCACHE_DIR:-/ccache}"
+export CC="ccache gcc"
+export CXX="ccache g++"
+ccache --max-size=500M
+ccache --zero-stats
+
 # Clone RetroArch and checkout pinned commit
 if [ ! -d "RetroArch" ]; then
     git clone https://github.com/libretro/RetroArch.git
@@ -70,5 +77,8 @@ cp retroarch "$OUTPUT_DIR/"
 mkdir -p "$OUTPUT_DIR/filters/video" "$OUTPUT_DIR/filters/audio"
 cp gfx/video_filters/*.so gfx/video_filters/*.filt "$OUTPUT_DIR/filters/video/"
 cp libretro-common/audio/dsp_filters/*.so libretro-common/audio/dsp_filters/*.dsp "$OUTPUT_DIR/filters/audio/"
+
+echo "=== ccache stats ==="
+ccache --show-stats
 
 echo "=== Build complete: ${OUTPUT_DIR}/retroarch ==="

@@ -41,15 +41,24 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ccache-pixel2
+          key: ccache-pixel2-${{ github.sha }}
+          restore-keys: ccache-pixel2-
+
       - name: Build Docker image
         run: docker buildx build --platform linux/arm64 -f Dockerfile.pixel2 -t ra-builder-pixel2 --load .
 
       - name: Build RetroArch
         run: |
-          mkdir -p output
+          mkdir -p output ccache-pixel2
           docker run --rm --platform linux/arm64 \
             -e RETROARCH_REF=${{ github.event.inputs.retroarch_ref || 'e5eff6db27cd37c3c318741ee8bb9a3b8b60ec62' }} \
+            -e CCACHE_DIR=/ccache \
             -v ${{ github.workspace }}/output:/output \
+            -v ${{ github.workspace }}/ccache-pixel2:/ccache \
             ra-builder-pixel2
 
       - name: Upload binary and filters
