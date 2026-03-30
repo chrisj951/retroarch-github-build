@@ -59,7 +59,7 @@ jobs:
         run: chmod +x build-pixel2.sh
 
       - name: Build RetroArch
-        run: chmod +x ./build-pixel2.sh
+        run: ./build-pixel2.sh
 
       - name: Upload binary
         env:
