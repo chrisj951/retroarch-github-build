@@ -72,5 +72,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mv output/retroarch output/ra64.pixel2
-          gh release upload "beta-${{ github.ref_name }}" output/ra64.pixel2 --clobber
+          mv RetroArch/retroarch RetroArch/ra64.pixel2
+          gh release upload "beta-${{ github.ref_name }}" RetroArch/ra64.pixel2 --clobber
