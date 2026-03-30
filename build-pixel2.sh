@@ -26,8 +26,8 @@ fi
 find . -type f \( -name '*.c' -o -name '*.h' \) -exec sed -i 's/\r$//' {} +
 
 # Apply pixel2-specific patches only
-if [ -d /patches/pixel2 ] && ls /patches/pixel2/*.patch 1>/dev/null 2>&1; then
-    for patch in /patches/pixel2/*.patch; do
+if [ -d ../patches/pixel2 ] && ls ../patches/pixel2/*.patch 1>/dev/null 2>&1; then
+    for patch in ../patches/pixel2/*.patch; do
         echo "Applying: $(basename "$patch")"
         git apply "$patch"
     done
