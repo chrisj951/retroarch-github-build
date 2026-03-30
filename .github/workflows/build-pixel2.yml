@@ -6,10 +6,6 @@ on:
       retroarch_ref:
         description: 'RetroArch commit or tag'
         default: 'e5eff6db27cd37c3c318741ee8bb9a3b8b60ec62'
-      rebuild_docker:
-        description: 'Force rebuild Docker image and re-upload'
-        type: boolean
-        default: false
   workflow_call:
     inputs:
       retroarch_ref:
