@@ -34,6 +34,13 @@ jobs:
               --notes "RetroArch binaries built from ${{ github.ref_name }}" \
             || true
 
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ccache-pixel2
+          key: ccache-pixel2-${{ github.sha }}
+          restore-keys: ccache-pixel2-
+
       - name: Install packages
         run: |
           sudo apt-get update
