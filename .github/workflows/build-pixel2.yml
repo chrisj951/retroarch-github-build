@@ -52,7 +52,7 @@ jobs:
 
       - name: Install libmali
         run: |
-          sudo apt install -y libmali-bifrost-g31-g13p0-wayland-gbm_1.9-1_arm64.deb
+          sudo apt install -y ./libmali-bifrost-g31-g13p0-wayland-gbm_1.9-1_arm64.deb
           rm libmali-bifrost-g31-g13p0-wayland-gbm_1.9-1_arm64.deb
 
       - name: Make the build script file executable
