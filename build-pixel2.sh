@@ -2,7 +2,6 @@
 set -e
 
 RETROARCH_REF="${RETROARCH_REF:-e5eff6db27cd37c3c318741ee8bb9a3b8b60ec62}"
-OUTPUT_DIR="${OUTPUT_DIR:-/output}"
 
 echo "=== Building RetroArch for Pixel2 (aarch64 native) ==="
 echo "=== Ref: ${RETROARCH_REF} ==="
@@ -71,10 +70,6 @@ LDFLAGS="$LDFLAGS" \
 # Build
 make HAVE_STATIC_VIDEO_FILTERS=1 HAVE_STATIC_AUDIO_FILTERS=1 -j$(nproc)
 strip -s retroarch
-
-# Output binary
-mkdir -p "$OUTPUT_DIR"
-cp retroarch "$OUTPUT_DIR/"
 
 # echo "=== ccache stats ==="
 # ccache --show-stats
