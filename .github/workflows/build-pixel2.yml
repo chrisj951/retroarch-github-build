@@ -38,8 +38,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential ccache git wget libdrm-dev libdrm-dev python3 python3-pip python3-setuptools python3-wheel ninja-build libopenal-dev premake4 autoconf libevdev-dev ffmpeg libpipewire-0.3-dev libavcodec-dev libavformat-dev libavdevice-dev libsnappy-dev libboost-tools-dev libboost-thread-dev libboost-all-dev liblzma-dev pkg-config zlib1g-dev libpng-dev libsdl2-dev clang cmake cmake-data libarchive13 libcurl4 libfreetype6-dev libjsoncpp-dev librhash0 libuv1 libgbm-dev libsdl2-ttf-2.0-0 libsdl2-ttf-dev wayland-protocols
-          apt autoremove -y
-          apt clean
+          sudo apt autoremove -y
+          sudo apt clean
 
       - name: Download libmali
         env:
@@ -52,7 +52,7 @@ jobs:
 
       - name: Install libmali
         run: |
-          apt install -y libmali-bifrost-g31-g13p0-wayland-gbm_1.9-1_arm64.deb
+          sudo apt install -y libmali-bifrost-g31-g13p0-wayland-gbm_1.9-1_arm64.deb
           rm libmali-bifrost-g31-g13p0-wayland-gbm_1.9-1_arm64.deb
 
       - name: Make the build script file executable
