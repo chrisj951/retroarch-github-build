@@ -2,17 +2,16 @@
 set -e
 
 RETROARCH_REF="${RETROARCH_REF:-e5eff6db27cd37c3c318741ee8bb9a3b8b60ec62}"
-OUTPUT_DIR="${OUTPUT_DIR:-/output}"
 
 echo "=== Building RetroArch for Pixel2 (aarch64 native) ==="
 echo "=== Ref: ${RETROARCH_REF} ==="
 
 # Set up ccache
-export CCACHE_DIR="${CCACHE_DIR:-/ccache}"
-export CC="ccache gcc"
-export CXX="ccache g++"
-ccache --max-size=500M
-ccache --zero-stats
+# export CCACHE_DIR="${CCACHE_DIR:-/ccache}"
+# export CC="ccache gcc"
+# export CXX="ccache g++"
+# ccache --max-size=500M
+# ccache --zero-stats
 
 # Clone RetroArch and checkout pinned commit
 if [ ! -d "RetroArch" ]; then
@@ -27,14 +26,14 @@ fi
 find . -type f \( -name '*.c' -o -name '*.h' \) -exec sed -i 's/\r$//' {} +
 
 # Apply pixel2-specific patches only
-if [ -d /patches/pixel2 ] && ls /patches/pixel2/*.patch 1>/dev/null 2>&1; then
-    for patch in /patches/pixel2/*.patch; do
+if [ -d ../patches/pixel2 ] && ls ../patches/pixel2/*.patch 1>/dev/null 2>&1; then
+    for patch in ../patches/pixel2/*.patch; do
         echo "Applying: $(basename "$patch")"
         git apply "$patch"
     done
 fi
 
-# Configure — Hario's exact flags for Pixel2 (RK3566 / Mali-G52
+# Configure — Hario's exact flags for Pixel2 (RK3566 / Mali-G52)
 
 export CFLAGS="-Ofast -march=armv8-a -mtune=cortex-a35 -ffunction-sections -fdata-sections -fomit-frame-pointer -flto=auto -DNDEBUG -DHAVE_FILTERS_BUILTIN"
 export CXXFLAGS="$CFLAGS"
@@ -72,11 +71,7 @@ LDFLAGS="$LDFLAGS" \
 make HAVE_STATIC_VIDEO_FILTERS=1 HAVE_STATIC_AUDIO_FILTERS=1 -j$(nproc)
 strip -s retroarch
 
-# Output binary
-mkdir -p "$OUTPUT_DIR"
-cp retroarch "$OUTPUT_DIR/"
-
-echo "=== ccache stats ==="
-ccache --show-stats
+# echo "=== ccache stats ==="
+# ccache --show-stats
 
 echo "=== Build complete: ${OUTPUT_DIR}/retroarch ==="
