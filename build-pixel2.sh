@@ -35,9 +35,9 @@ fi
 
 # Configure — Hario's exact flags for Pixel2 (RK3566 / Mali-G52)
 
-export CFLAGS="-Ofast -march=armv8-a -mtune=cortex-a35 -ffunction-sections -fdata-sections -fomit-frame-pointer -flto -DNDEBUG -DHAVE_FILTERS_BUILTIN"
+export CFLAGS="-Ofast -march=armv8-a -mtune=cortex-a35 -ffunction-sections -fdata-sections -fomit-frame-pointer -flto=auto -DNDEBUG -DHAVE_FILTERS_BUILTIN"
 export CXXFLAGS="$CFLAGS"
-export LDFLAGS="$LDFLAGS -Wl,--gc-sections -flto"
+export LDFLAGS="$LDFLAGS -Wl,--gc-sections -flto=auto"
 
 CFLAGS="$CFLAGS" \
 CXXFLAGS="$CXXFLAGS" \

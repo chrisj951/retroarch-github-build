@@ -30,9 +30,9 @@ export STRIP=aarch64-linux-gnu-strip
 export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
 export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig
 
-export CFLAGS="$CFLAGS -O3 -flto -ffunction-sections -fdata-sections -DHAVE_SCREEN_ORIENTATION -DGEOMETRY_MENU_ROTATION -D_GNU_SOURCE -DHAVE_FILTERS_BUILTIN"
-export CXXFLAGS="$CXXFLAGS -O3 -ffunction-sections -fdata-sections -flto -DHAVE_SCREEN_ORIENTATION -DGEOMETRY_MENU_ROTATION -D_GNU_SOURCE -DHAVE_FILTERS_BUILTIN"
-export LDFLAGS="$LDFLAGS -Wl,--gc-sections -flto"
+export CFLAGS="$CFLAGS -O3 -flto -ffunction-sections -fdata-sections -flto=auto -DHAVE_SCREEN_ORIENTATION -DGEOMETRY_MENU_ROTATION -D_GNU_SOURCE -DHAVE_FILTERS_BUILTIN"
+export CXXFLAGS="$CXXFLAGS -O3 -ffunction-sections -fdata-sections -flto=auto -DHAVE_SCREEN_ORIENTATION -DGEOMETRY_MENU_ROTATION -D_GNU_SOURCE -DHAVE_FILTERS_BUILTIN"
+export LDFLAGS="$LDFLAGS -Wl,--gc-sections -flto=auto"
 
 # Configure for universal aarch64 binary
 # Uses SDL2 + EGL + GLES + Vulkan. GLES works on all GPUs; Vulkan is available
