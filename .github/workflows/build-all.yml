@@ -26,5 +26,10 @@ jobs:
     with:
       retroarch_version: ${{ inputs.retroarch_version }}
 
+  universal32:
+    uses: ./.github/workflows/build-universal32.yml
+    with:
+      retroarch_version: ${{ inputs.retroarch_version }}
+
   pixel2:
     uses: ./.github/workflows/build-pixel2.yml
