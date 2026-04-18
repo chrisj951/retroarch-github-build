@@ -384,7 +384,7 @@ index 0000000..0000000
 +
 +bool spruce_igm_is_enabled(void)
 +{
-+   return access(IGM_FLAG_PATH, F_OK) == 0;
++   return true; //access(IGM_FLAG_PATH, F_OK) == 0;
 +}
 +
 +/* ── Toggle (called from runloop context) ──────────────────── */
