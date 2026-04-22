@@ -35,7 +35,7 @@ export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig
 # on devices with Vulkan drivers (e.g. Mali G57 on Smart Pro S).
 ./configure --host=aarch64-linux-gnu \
     --disable-x11 \
-    --disable-wayland \
+    --enable-wayland \
     --enable-vulkan \
     --disable-opengl \
     --disable-qt \
